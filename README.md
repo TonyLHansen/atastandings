@@ -72,7 +72,7 @@ Finally, you can ask for help on what options are available:
 
 # Sample Use Examples
 
-The following examples show how the various options can be combined together:
+The following examples show some of the ways that the various options can be combined together:
 
 1. `atastandings --worlds --search aurora`
 Show all students from Aurora (any state) in the world standings.
