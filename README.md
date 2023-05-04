@@ -46,7 +46,7 @@ be interested in who the first place leaders are.
 For example, `--maximum-place 1` would print only the first place leaders,
 and `--maximum-place 4` will print only the top four contenders.
 
-## Directory Cache
+## Web Cache
 By default, `atastandings` will maintain a cache of the web sites, so that you can have faster response times
 when you run the program multiple times.
 Most of the time you can ignore that the cache is being used, as cache files older than 24 hours are automatically ignored.
@@ -55,11 +55,11 @@ However power users might want additional controls.
 * `--cache-directory PATH` This will set the cache directory to the given path.
 It defaults to an os-specific temp directory.
 * `--clean-cache` Sometimes you might wish to clean up all of the cached files.
-All cache files are named `as.` followed by a long string of characters representing the web file being referenced.
+All cache files are named `atastandings.` followed by a long string of characters representing the web file being referenced.
 * `--ignore-existing-cache` Sometimes you might want the existing cache to be ignored, but still created.
 Doing this will give you slower response times.
 * `--do-not-write-cache` Sometimes you might want the cache files to not be written.
-You can use use this option if there are problems on your system with the cache directory.
+For example, you can use use this option if there are problems on your system with the cache directory.
 Doing this will give you slower response times when you run the program again.
 
 
