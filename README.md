@@ -88,7 +88,7 @@ who are eligible to compete in the District Champoionships.
 1. `atastandings --worlds --division-code B01B`
 Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` (`B01B`) division at Worlds.
 1. `atastandings --worlds --division-code B01B`
-Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` division at Worlds.
+Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` (`B01B`) division at Worlds.
 
 # Installation
 This program was written using python3, so you will need a python3 environment to run it.
