@@ -2,6 +2,8 @@
 
 """ Search the ATA World and State/Province standings """
 
+# See the LICENSE file for the license to use and modify this program.
+
 import argparse
 import glob
 import os
