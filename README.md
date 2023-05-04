@@ -106,4 +106,4 @@ Put the atastandings script somewhere in your path, make sure it is executable
 (in Linux and WSL, `chmod a+x atastandings`) and run it with the options you desire.
 Or you can invoke the script directly with python3, as in `python3 atastandings` followed
 by the options you desire.
-
+You might need to execute it as `./atastandings` followed by the options you desire.
