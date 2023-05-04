@@ -8,6 +8,7 @@ and has no provisions for searching based on a person's name or school.
 
 All `atastandings` options are specified using two hyphens (`--`) and the option name,
 possibly followed by an argument such as a search string or a state/province abbreviation.
+There are also short versions of most of the options that are a single hyphen and a single lettter.
 
 ## Worlds and State Standings
 The default for `atastandings` is to search the world standings.
@@ -73,20 +74,20 @@ Finally, you can ask for help on what options are available:
 
 The following examples show how the various options can be combined together:
 
-`atastandings --worlds --search aurora`
+* `atastandings --worlds --search aurora`
 Show all students from Aurora (any state) in the world standings.
-```atastandings --worlds --state co --search aurora```
+* `atastandings --worlds --state co --search aurora`
 Show all students from Aurora, Colorado in either the worlds or Colorado state standings.
-`atastandings --worlds --state co --search aurora --maximum-place 1`
+* `atastandings --worlds --state co --search aurora --maximum-place 1`
 Show all students from Aurora, Colorado leading the competition in either the worlds or state standings.
-`atastandings --state co --search aurora --maximum-place 1`
+* `atastandings --state co --search aurora --maximum-place 1`
 After the results are finalized, show all state champions from Aurora, Colorado.
-`atastandings --state co --search aurora`
+* `atastandings --state co --search aurora`
 After the results are finalized, show all students from Aurora, Colorado
 who are eligible to compete in the District Champoionships.
-`atastandings --worlds --division-code B01B`
+* `atastandings --worlds --division-code B01B`
 Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` (`B01B`) division at Worlds.
-`atastandings --worlds --division-code B01B`
+* `atastandings --worlds --division-code B01B`
 Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` division at Worlds.
 
 # Installation

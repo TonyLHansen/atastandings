@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+
+""" Search the ATA World and State/Province standings """
+
+import argparse
+import os
+import re
+import sys
+import time
+
+import requests
+
+EPILOG = "-W and -S can be used together, or separately. If neither -W nor -S are set, default to -W"
+WORLDBASE = "https://atamartialarts.com/events/tournament-standings/worlds-standings/"
+STATEBASE = "https://atamartialarts.com/events/tournament-standings/state-standings/"
+
+
+def get_cache_dir():
+    """ Determine the directory where to store a cache of the web files """
+    for name in ["TEMP", "TMP", "TMPDIR", "TEMPDIR"]:
+        dirname = os.environ.get(name)
+        if dirname:
+            return dirname
+    return "/tmp"
+
+
+def strip_html(l):
+    """ strip out all html <tags> """
+    l = re.sub("<[^>]*>", "", l)
+    l = re.sub(r"\s+", " ", l)
+    return l
+
+
+def get_url(args, url):
+    """
+    Retrieve a URL. Exit with an error message if there is an error retrieving it.
+    Return the body as an array of lines.
+
+    Note that this uses a cache, so that each web page is visited exactly once.
+    This speeds up running the program multiple times in a row.
+    There are options to ignore, disable and clean the cache.
+    Cache files older than 24 hours are automatically ignored.
+    """
+
+    urlname = re.sub("[^a-zA-Z0-9_]", "", url)
+    cachename = f"{args.cache_directory}/atastandings.{urlname}"
+    usefile = not args.ignore_existing_cache
+    if usefile:
+        try:
+            if args.verbose:
+                print(f"looking for {args.cache_directory}/atastandings.{urlname}")
+            st = os.stat(cachename)
+            if time.time() - st.st_mtime > 24 * 60 * 60: # ignore files older than 24 hours
+                os.unlink(cachename)
+                if args.verbose:
+                    print(f"{cachename} is too old -- ignored")
+
+            with open(cachename) as fp:
+                text = fp.read()
+        except FileNotFoundError:
+            usefile = False
+
+    if not usefile:
+        if args.verbose:
+            print(f"getting url={url}")
+        r = requests.get(url)
+        if r.status_code >= 300:
+            sys.exit(f"Accessing {url} returned the status code {r.status_code}")
+
+        if args.verbose > 2:
+            print(f"page={r.text}")
+        if not args.do_not_write_cache:
+            if args.verbose:
+                print(f"writing to {cachename}")
+            with open(f"{cachename}", "w") as fp:
+                fp.write(r.text)
+        text = r.text
+
+    return text.splitlines()
+
+
+def clean_cache(args):
+    """ Clear out all files in the cache directory named "atastandings." followed by anything. """
+    for fname in glob.glob(f"{args.cache_directory}/atastandings.*"):
+        if args.verbose:
+            print(f"Cleaning {fname}")
+        os.unlink(fname)
+
+
+def trim_border(lines, border):
+    """
+    Trim all lines up through the first line that includes the string border.
+    Then trim all lines after border occurs again.
+    Also trim any lines after "Listed Tournaments"
+    """
+    nl = []
+    saving = False
+    for l in lines:
+        if border in l:
+            if saving:
+                break
+        elif "Listed Tournaments" in l:
+            break
+        if saving:
+            nl.append(l)
+        if border in l:
+            saving = True
+    return nl
+
+
+def join_li_td_tr(lines):
+    """ Join any lines that end with </li>, </td> and </th> with the subsequent line """
+    for i in range(len(lines) - 1):
+        l = lines[i].strip().replace(" ", "")
+        if l.endswith("</li>") or l.endswith("</td>") or l.endswith("</th>"):
+            lines[i + 1] = lines[i] + lines[i + 1]
+            lines[i] = ""
+    return lines
+
+
+def fgrep(s, lines):
+    """ search for lines that have the given string and return that array """
+    newlines = []
+    for l in lines:
+        if s in l:
+            newlines.append(l)
+    return newlines
+
+
+def get_code(l):
+    """ extract code=ABC from a line """
+    l = re.sub("^.*code=", "code=", l)
+    l = re.sub('".*$', "", l)
+    return l
+
+
+def get_codes(args, url):
+    """ Retrieve a URL. Retrieve the list of codes as an array of [division-code, division-name] """
+    lines = fgrep("code=", join_li_td_tr(get_url(args, url)))
+    nl = []
+    for l in lines:
+        nl.append([get_code(l), strip_html(l).replace("VIEW", "")])
+    # print(f"page={nl}")
+    return nl
+
+
+def print_lines(lines):
+    """ print the lines of an array """
+    for l in lines:
+        print(l)
+
+
+def get_info(args, code, url, border):
+    """ Get the standings from this url """
+    lines = get_url(args, url)
+    lines = trim_border(lines, border)
+    dispcode = code[0].split("=")[1]
+    for i, val in enumerate(lines):
+        if "text-primary" in val:
+            lines[i] = "DIVISION " + dispcode + " " + val
+        lines[i] = re.sub(" +", " ", lines[i])
+        lines[i] = re.sub('style="[^"]*"', "", lines[i])
+        lines[i] = re.sub('class="[^"]*"', "", lines[i])
+
+    lines = join_li_td_tr(lines)
+    nl = []
+    for l in lines:
+        l = l.replace("</td>", "").replace("</th>", "").replace("</li>", "")
+        l = re.sub("<[^>]*>", "", l)
+        l = (
+            l.replace("The points below", "")
+            .replace("Back to Map", "")
+            .replace("reflect the following tournaments", "")
+        )
+        l = re.sub(r"\s+", " ", l)
+        if l in ("", " "):
+            continue
+        nl.append(l)
+
+    # Gather up a series of header lines.
+    # Print them only when a person's name is subsequently printed.
+    # Otherwise throw them away.
+    nl2 = []
+    hdrs = []
+    for l in nl:
+        if l.startswith("DIVISION"):
+            hdrs = [l]
+        elif re.match(r"\s*[a-zA-Z]", l):
+            hdrs.append(l)
+        elif re.match(r"\s*[0-9]+ .*" + args.search, l, flags=re.IGNORECASE):
+            place = re.match(r"\s*([0-9]+)", l).group(1)
+            if int(place) <= args.maximum_place:
+                if hdrs:
+                    nl2 += [""]
+                    nl2 += hdrs
+                hdrs = []
+                nl2.append(l)
+    print_lines(nl2)
+
+
+def print_worlds(args):
+    """ print the worlds standings """
+    if args.division_code:
+        # print(f"args.division_code:={args.division_code}")
+        codes = [[f"code={code}", ""] for code in args.division_code]
+    else:
+        codes = get_codes(args, WORLDBASE)
+
+    if args.list_division_codes:
+        print("WORLD STANDINGS DIVISIONS")
+        for code in codes:
+            print(f"{code[0].split('=')[1]}: {code[1]}")
+
+    else:
+        print("WORLD STANDINGS")
+        for code in codes:
+            get_info(args, code, f"{WORLDBASE}?{code[0]}", "INFO")
+
+
+def print_states(args):
+    """ print the state standings """
+    # The web site allows for both lower and upper case. Upper case displays better.
+    for i in range(len(args.state)):
+        args.state[i] = args.state[i].upper()
+
+    for state in args.state:
+        if args.worlds or state != args.state[0]:
+            print("")
+
+        # https://atamartialarts.com/Scripts/state-standing.bundle.js
+        # Set the country code appropriately based on the state.
+        # Experimentally, it looks like "country=$COUNTRY" is NOT required,
+        # but we'll pass it in anyway.
+        if state in ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]:
+            COUNTRY = "CA"
+        else:
+            COUNTRY = "US"
+
+        if args.division_code:
+            # print(f"args.division_code:={args.division_code}")
+            codes = [[f"code={code}", ""] for code in args.division_code]
+        else:
+            codes = get_codes(args, f"{STATEBASE}?country={COUNTRY}&state={state}")
+
+        if args.list_division_codes:
+            print(f"STATE STANDINGS DIVISIONS FOR {state}")
+            for code in codes:
+                print(f"{code[0].split('=')[1]}: {code[1]}")
+
+        else:
+            print(f"STATE STANDINGS FOR {state}")
+            for code in codes:
+                get_info(args, code, f"{STATEBASE}?country={COUNTRY}&state={state}&{code[0]}", "CONTENT")
+
+
+def main():
+    """ main function """
+    parser = argparse.ArgumentParser(description=__doc__, epilog=EPILOG)
+    parser.add_argument("-s", "--search", help="Pattern to search for in the standings", type=str, default="")
+    parser.add_argument(
+        "-S", "--state", help="State to search. May be specified multiple times.", type=str, action="append"
+    )
+    parser.add_argument("-W", "--worlds", help="Search the world standings", action="store_true")
+    parser.add_argument(
+        "-l", "--list-division-codes", help="List the division codes instead of printing standings", action="store_true"
+    )
+    parser.add_argument(
+        "-p",
+        "--maximum-place",
+        help="Only print places with a number <= than this. (e.g. 1 means 1st place) Default: all",
+        type=int,
+        default=99,
+    )
+    parser.add_argument(
+        "-c",
+        "--division-code",
+        help="Only print this division. May be specified multiple times.",
+        type=str,
+        action="append",
+    )
+    parser.add_argument(
+        "-C",
+        "--cache-directory",
+        help="Keep a cache of the web pages in this directory.",
+        type=str,
+        default=get_cache_dir(),
+    )
+    parser.add_argument(
+        "-I",
+        "--ignore-existing-cache",
+        help="Ignore any existing cache of the web pages. (Still create one though.)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-D", "--do-not-write-cache", help="Do not write a cache of the web pages.", action="store_true"
+    )
+    parser.add_argument(
+        "--clean-cache", help="Remove all of the files in the current cache of the web pages.", action="store_true"
+    )
+    parser.add_argument("-v", "--verbose", help="Verbose, may be specified multiple times", action="count", default=0)
+    args = parser.parse_args()
+
+    if args.clean_cache:
+        clean_cache(args)
+
+    if not args.worlds and not args.state:
+        args.worlds = True
+
+    if args.worlds:
+        print_worlds(args)
+
+    if args.state:
+        print_states(args)
+
+
+if __name__ == "__main__":
+    main()
