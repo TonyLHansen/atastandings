@@ -14,5 +14,4 @@ run-black:
 	black -l 120 atastandings
 
 run-pylint:
-	pylint atastandings
-
+	pylint3 atastandings

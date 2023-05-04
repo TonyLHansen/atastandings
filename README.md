@@ -14,8 +14,8 @@ There are also short versions of most of the options that are a single hyphen an
 The default for `atastandings` is to search the world standings.
 You can instead ask it to search one or more state standings.
 
-* `--worlds` search the world standings
-* `--state STATE-ABBREV` search the given state or province, using the two character state or province postoffice code.
+* `--worlds`, `-W` -- search the world standings
+* `--state ABBREV`, `-S ABBREV` -- search the given state or province, using the two character state or province postoffice code.
 
 For example, both `atastandings` and  `atastandings --worlds` will search the world standings.
 `atastandings --state pa --state ca` will search the state standings for Pennsylvania and California.
@@ -29,7 +29,7 @@ For example, the division code for **1st Degree Black Belt Age 9 - 10** is *B01B
 
 To find out what the division codes are, you can get a list:
 
-* `--list-division-codes` list all of the division codes.
+* `--list-division-codes`, `-l` -- list all of the division codes.
 
 This can be combined with `--state STATE-ABBREV` to get the division codes specific to a state/province.
 (Not all divisions have competitors in each state or province.
@@ -41,7 +41,7 @@ The default for `atastandings` is to print all current place standings in each d
 The place standings for each state on the web site show the top 10 people, but you might only
 be interested in who the first place leaders are.
 
-* `--maximum-place MAXIMUM-PLACE` limit the output to only those whose place is less than or equal to the specified maximum place.
+* `--maximum-place MAXIMUM-PLACE`, `-p MAXIMUM-PLACE` -- limit the output to only those whose place is less than or equal to the specified maximum place.
 
 For example, `--maximum-place 1` would print only the first place leaders,
 and `--maximum-place 4` will print only the top four contenders.
@@ -52,13 +52,13 @@ when you run the program multiple times.
 Most of the time you can ignore that the cache is being used, as cache files older than 24 hours are automatically ignored.
 However power users might want additional controls.
 
-* `--cache-directory PATH` This will set the cache directory to the given path.
+* `--cache-directory PATH`, `-C PATH` -- This will set the cache directory to the given path.
 It defaults to an os-specific temp directory.
-* `--clean-cache` Sometimes you might wish to clean up all of the cached files.
+* `--clean-cache` -- Sometimes you might wish to clean up all of the cached files.
 All cache files are named `atastandings.` followed by a long string of characters representing the web file being referenced.
-* `--ignore-existing-cache` Sometimes you might want the existing cache to be ignored, but still created.
+* `--ignore-existing-cache`, `-I` -- Sometimes you might want the existing cache to be ignored, but still created.
 Doing this will give you slower response times.
-* `--do-not-write-cache` Sometimes you might want the cache files to not be written.
+* `--do-not-write-cache`, `-D` -- Sometimes you might want the cache files to not be written.
 For example, you can use use this option if there are problems on your system with the cache directory.
 Doing this will give you slower response times when you run the program again.
 
@@ -67,27 +67,27 @@ Doing this will give you slower response times when you run the program again.
 
 Finally, you can ask for help on what options are available:
 
-* `--help` Show a help message listing all of the options and variations.
+* `--help`, `-?` -- Show a help message listing all of the options and variations.
 
 
 # Sample Use Examples
 
 The following examples show how the various options can be combined together:
 
-* `atastandings --worlds --search aurora`
+1. `atastandings --worlds --search aurora`
 Show all students from Aurora (any state) in the world standings.
-* `atastandings --worlds --state co --search aurora`
+1. `atastandings --worlds --state co --search aurora`
 Show all students from Aurora, Colorado in either the worlds or Colorado state standings.
-* `atastandings --worlds --state co --search aurora --maximum-place 1`
+1. `atastandings --worlds --state co --search aurora --maximum-place 1`
 Show all students from Aurora, Colorado leading the competition in either the worlds or state standings.
-* `atastandings --state co --search aurora --maximum-place 1`
+1. `atastandings --state co --search aurora --maximum-place 1`
 After the results are finalized, show all state champions from Aurora, Colorado.
-* `atastandings --state co --search aurora`
+1. `atastandings --state co --search aurora`
 After the results are finalized, show all students from Aurora, Colorado
 who are eligible to compete in the District Champoionships.
-* `atastandings --worlds --division-code B01B`
+1. `atastandings --worlds --division-code B01B`
 Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` (`B01B`) division at Worlds.
-* `atastandings --worlds --division-code B01B`
+1. `atastandings --worlds --division-code B01B`
 Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` division at Worlds.
 
 # Installation

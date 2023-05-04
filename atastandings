@@ -3,6 +3,7 @@
 """ Search the ATA World and State/Province standings """
 
 import argparse
+import glob
 import os
 import re
 import sys
@@ -16,7 +17,7 @@ STATEBASE = "https://atamartialarts.com/events/tournament-standings/state-standi
 
 
 def get_cache_dir():
-    """ Determine the directory where to store a cache of the web files """
+    """Determine the directory where to store a cache of the web files"""
     for name in ["TEMP", "TMP", "TMPDIR", "TEMPDIR"]:
         dirname = os.environ.get(name)
         if dirname:
@@ -25,7 +26,7 @@ def get_cache_dir():
 
 
 def strip_html(l):
-    """ strip out all html <tags> """
+    """strip out all html <tags>"""
     l = re.sub("<[^>]*>", "", l)
     l = re.sub(r"\s+", " ", l)
     return l
@@ -50,7 +51,7 @@ def get_url(args, url):
             if args.verbose:
                 print(f"looking for {args.cache_directory}/atastandings.{urlname}")
             st = os.stat(cachename)
-            if time.time() - st.st_mtime > 24 * 60 * 60: # ignore files older than 24 hours
+            if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
                 os.unlink(cachename)
                 if args.verbose:
                     print(f"{cachename} is too old -- ignored")
@@ -80,7 +81,7 @@ def get_url(args, url):
 
 
 def clean_cache(args):
-    """ Clear out all files in the cache directory named "atastandings." followed by anything. """
+    """Clear out all files in the cache directory named "atastandings." followed by anything."""
     for fname in glob.glob(f"{args.cache_directory}/atastandings.*"):
         if args.verbose:
             print(f"Cleaning {fname}")
@@ -109,7 +110,7 @@ def trim_border(lines, border):
 
 
 def join_li_td_tr(lines):
-    """ Join any lines that end with </li>, </td> and </th> with the subsequent line """
+    """Join any lines that end with </li>, </td> and </th> with the subsequent line"""
     for i in range(len(lines) - 1):
         l = lines[i].strip().replace(" ", "")
         if l.endswith("</li>") or l.endswith("</td>") or l.endswith("</th>"):
@@ -119,7 +120,7 @@ def join_li_td_tr(lines):
 
 
 def fgrep(s, lines):
-    """ search for lines that have the given string and return that array """
+    """search for lines that have the given string and return that array"""
     newlines = []
     for l in lines:
         if s in l:
@@ -128,14 +129,14 @@ def fgrep(s, lines):
 
 
 def get_code(l):
-    """ extract code=ABC from a line """
+    """extract code=ABC from a line"""
     l = re.sub("^.*code=", "code=", l)
     l = re.sub('".*$', "", l)
     return l
 
 
 def get_codes(args, url):
-    """ Retrieve a URL. Retrieve the list of codes as an array of [division-code, division-name] """
+    """Retrieve a URL. Retrieve the list of codes as an array of [division-code, division-name]"""
     lines = fgrep("code=", join_li_td_tr(get_url(args, url)))
     nl = []
     for l in lines:
@@ -145,13 +146,13 @@ def get_codes(args, url):
 
 
 def print_lines(lines):
-    """ print the lines of an array """
+    """print the lines of an array"""
     for l in lines:
         print(l)
 
 
 def get_info(args, code, region, url, border):
-    """ Get the standings from this url """
+    """Get the standings from this url"""
     lines = get_url(args, url)
     lines = trim_border(lines, border)
     dispcode = code[0].split("=")[1]
@@ -199,7 +200,7 @@ def get_info(args, code, region, url, border):
 
 
 def print_worlds(args):
-    """ print the worlds standings """
+    """print the worlds standings"""
     if args.division_code:
         # print(f"args.division_code:={args.division_code}")
         codes = [[f"code={code}", ""] for code in args.division_code]
@@ -218,7 +219,7 @@ def print_worlds(args):
 
 
 def print_states(args):
-    """ print the state standings """
+    """print the state standings"""
     # The web site allows for both lower and upper case. Upper case displays better.
     for i in range(len(args.state)):
         args.state[i] = args.state[i].upper()
@@ -254,7 +255,7 @@ def print_states(args):
 
 
 def main():
-    """ main function """
+    """main function"""
     parser = argparse.ArgumentParser(description=__doc__, epilog=EPILOG)
     parser.add_argument("-s", "--search", help="Pattern to search for in the standings", type=str, default="")
     parser.add_argument(
@@ -297,7 +298,13 @@ def main():
     parser.add_argument(
         "--clean-cache", help="Remove all of the files in the current cache of the web pages.", action="store_true"
     )
-    parser.add_argument("-v", "--verbose", help="Verbose, may be specified multiple times", action="count", default=0)
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="Verbose, print some debugging information. May be specified multiple times for higher verbosity levels.",
+        action="count",
+        default=0,
+    )
     args = parser.parse_args()
 
     if args.clean_cache:
