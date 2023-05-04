@@ -67,7 +67,7 @@ Doing this will give you slower response times when you run the program again.
 
 Finally, you can ask for help on what options are available:
 
-* `--help`, `-?` -- Show a help message listing all of the options and variations.
+* `--help`, `-h` -- Show a help message listing all of the options and variations.
 
 
 # Sample Use Examples
