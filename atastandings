@@ -150,14 +150,14 @@ def print_lines(lines):
         print(l)
 
 
-def get_info(args, code, url, border):
+def get_info(args, code, region, url, border):
     """ Get the standings from this url """
     lines = get_url(args, url)
     lines = trim_border(lines, border)
     dispcode = code[0].split("=")[1]
     for i, val in enumerate(lines):
         if "text-primary" in val:
-            lines[i] = "DIVISION " + dispcode + " " + val
+            lines[i] = f"DIVISION {region} {dispcode} {val}"
         lines[i] = re.sub(" +", " ", lines[i])
         lines[i] = re.sub('style="[^"]*"', "", lines[i])
         lines[i] = re.sub('class="[^"]*"', "", lines[i])
@@ -214,7 +214,7 @@ def print_worlds(args):
     else:
         print("WORLD STANDINGS")
         for code in codes:
-            get_info(args, code, f"{WORLDBASE}?{code[0]}", "INFO")
+            get_info(args, code, "WORLDS ", f"{WORLDBASE}?{code[0]}", "INFO")
 
 
 def print_states(args):
@@ -250,7 +250,7 @@ def print_states(args):
         else:
             print(f"STATE STANDINGS FOR {state}")
             for code in codes:
-                get_info(args, code, f"{STATEBASE}?country={COUNTRY}&state={state}&{code[0]}", "CONTENT")
+                get_info(args, code, f"{state} ", f"{STATEBASE}?country={COUNTRY}&state={state}&{code[0]}", "CONTENT")
 
 
 def main():
