@@ -89,6 +89,10 @@ who are eligible to compete in the District Champoionships.
 Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` (`B01B`) division at Worlds.
 1. `atastandings --worlds --division-code B01B`
 Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` (`B01B`) division at Worlds.
+1. `atastandings --division-code W23A --division-code M23A`
+Show all of the competitors in the top 10 for both the `WOMENS 2nd, 3rd Degree Black Belt Age 18 - 29` (`W23A`)
+and `MENS 2nd, 3rd Degree Black Belt Age 18 - 29` (`M23A`) divisions.
+
 
 # Installation
 This program was written using python3, so you will need a python3 environment to run it.
