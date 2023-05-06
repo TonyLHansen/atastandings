@@ -93,7 +93,8 @@ Finally, you can ask for help on what options are available:
 The following examples show some of the ways that the various options can be combined together.
 All sample output uses fictitious names.
 
-1. `atastandings --worlds --search aurora`
+## `atastandings --worlds --search aurora`
+
 Show all students from Aurora (any state) in the world standings.
 ``` shell
 WORLD STANDINGS, searching for aurora, maximum place of 99
@@ -108,7 +109,7 @@ DIVISION WORLDS B01E X-Treme Forms Boys 1st Degree X-Treme Forms Black Belt 15 -
  7 Feilsfames Noorl 15 AURORA, CO
 ```
 
-2. `atastandings --worlds --state co --search aurora`
+## `atastandings --worlds --state co --search aurora`
 Show all students from Aurora, Colorado in either the worlds or Colorado state standings.
 ``` shell
 WORLD STANDINGS, searching for aurora, maximum place of 99
@@ -123,7 +124,7 @@ DIVISION WORLDS B01E X-Treme Forms Boys 1st Degree X-Treme Forms Black Belt 15 -
  7 Ondmientmuhabitant Dimaceensa 15 AURORA, CO
 ```
 
-3. `atastandings --worlds --state co --search aurora --maximum-place 1`
+## `atastandings --worlds --state co --search aurora --maximum-place 1`
 Show all students from Aurora, Colorado leading the competition in either the worlds or state standings.
 ``` shell
 WORLD STANDINGS, searching for aurora, maximum place of 1
@@ -138,7 +139,7 @@ DIVISION CO B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
 DIVISION CO B01B Sparring Boys 1st Degree Black Belt 9 - 10 Years Old
 ```
 
-4. `atastandings --state co --search aurora --maximum-place 1`
+## `atastandings --state co --search aurora --maximum-place 1`
 After the results are finalized, show all state champions from Aurora, Colorado.
 ``` shell
 STATE STANDINGS FOR CO, searching for aurora, maximum place of 1
@@ -153,7 +154,7 @@ DIVISION CO B01B Sparring Boys 1st Degree Black Belt 9 - 10 Years Old
  1 Ingillfanunc Porttitorsde 20 AURORA, CO
 ```
 
-5. `atastandings --by-person-with-divisions --state co --search aurora --maximum-place 1 --omit points --omit location --omit region`
+## `atastandings --by-person-with-divisions --state co --search aurora --maximum-place 1 --omit points --omit location --omit region`
 After the results are finalized, show all state champions from Aurora, Colorado, sorted by name.
 Include with each name the divisions they are state champions in.
 Do not print the location, points or region values.
@@ -170,7 +171,7 @@ Tempusper Dnigissmidtortor | 1 B01C Sparring Boys 1st Degree Black Belt 11 - 12 
 Pluvianrhbaitnat Dolorvelit | 1 MBCB Weapons Men Special Abilities Black Belt-Cognitive 30 - 99 Years Old
 ```
 
-6. `atastandings --by-person --state co --search aurora --maximum-place 1 --omit location`
+## `atastandings --by-person --state co --search aurora --maximum-place 1 --omit location`
 After the results are finalized, show all state champions from Aurora, Colorado, sorted by name.
 Print *ONLY* their names, without their location.
 ``` shell
@@ -186,7 +187,7 @@ Rfemneumtue Crussusgtiist
 Auguesollicitudin Daipbusdamse
 ```
 
-7. `atastandings --state co --search aurora --maximum-place 10`
+## `atastandings --state co --search aurora --maximum-place 10`
 After the results are finalized, show all students from Aurora, Colorado
 who are eligible to compete in the District Champoionships.
 ``` shell
@@ -202,7 +203,7 @@ DIVISION CO B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
  1 Pretiumusjtlo Psmuoorl 14 AURORA, CO 2 Uctrounra Quisafciilssi 6 AURORA, CO 5 Natoquersiituqetr Raseetnalqiueta Qiusqeurviadha 3 AURORA, CO 5 Tacitiporta Saasaac 3 AURORA, CO 8 Nlisnihb Iidn 1 AURORA, CO 8 Antenma Tlelsunnuc 1 AURORA, CO
 ```
 
-8. `atastandings --by-person-with-divisions --state co --search aurora --maximum-place 10 --omit points --omit location --omit region`
+## `atastandings --by-person-with-divisions --state co --search aurora --maximum-place 10 --omit points --omit location --omit region`
 After the results are finalized, show all students from Aurora, Colorado, sorted by name,
 who are eligible to compete in the District Champoionships.
 Include with each name the divisions they are state champions in.
@@ -220,7 +221,7 @@ Ahcieta Adipiscingsme | 3 GCOB Forms Girls Color Belt 9 - 10 Years Old
 Diooconsequat Adpiiscniglobortis | 8 BCOB Combat Weapons Boys Color Belt 9 - 10 Years Old
 ```
 
-9. `atastandings --by-person --state co --search aurora --maximum-place 10 --omit location`
+## `atastandings --by-person --state co --search aurora --maximum-place 10 --omit location`
 After the results are finalized, show all students from Aurora, Colorado, sorted by name,
 who are eligible to compete in the District Champoionships.
 Print *ONLY* their names, without their location.
@@ -237,7 +238,7 @@ Justoposuere Ahbiatsessgtiist
 Mrobiuisomd Nmarurtum Ahcerp
 ```
 
-10. `atastandings --worlds --division-code B01B`
+## `atastandings --worlds --division-code B01B`
 Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` (`B01B`) division at Worlds.
 ``` shell
 WORLD STANDINGS, maximum place of 99
@@ -252,7 +253,7 @@ DIVISION WORLDS B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
  1 Molestielorem Ptaruirnteinterdum 91 PHOENIX, AZ 2 Nteaornare Notsraocnsceteutr 79 NAPLES, FL 3 Uallollcitiuind Ditcumtsid Cnoubaiim 58 CUTLER BAY, FL 4 Aruct Nveeanisttrotort 54 SALINE, MI 5 Urssueclriesque Ocnsqeutaaccumsan 52 DENHAM SPRINGS, LA 6 Atciitlqiamu Pretiummobri 51 PETALUMA, CA 7 Bibenmdufelis Aneeanami 46 CHULA VISTA, CA 7 Pahselulssaodlses Niterudmeelmetnume 46 ALLEN, TX 9 Eichulatmia Nqeuensenectus 42 MATTHEWS, NC 9 Idctmustdasas Mollismaeta 42 FOREST HILL, MD
 ```
 
-11. `atastandings --division-code W23A --division-code M23A`
+## `atastandings --division-code W23A --division-code M23A`
 Show all of the competitors in the top 10 for both the `WOMENS 2nd, 3rd Degree Black Belt Age 18 - 29` (`W23A`)
 and `MENS 2nd, 3rd Degree Black Belt Age 18 - 29` (`M23A`) divisions.
 ``` shell
