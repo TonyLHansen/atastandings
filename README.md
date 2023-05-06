@@ -91,7 +91,7 @@ Finally, you can ask for help on what options are available:
 # Sample Use Examples
 
 The following examples show some of the ways that the various options can be combined together.
-All sample output uses fictitious names.
+All sample output uses fictitious names, and only shows the first 10 lines of the output.
 
 ## `atastandings --worlds --search aurora`
 
@@ -107,6 +107,7 @@ DIVISION WORLDS B01E Creative Weapons Boys 1st Degree Creative Weapons Black Bel
 DIVISION WORLDS B01E X-Treme Forms Boys 1st Degree X-Treme Forms Black Belt 15 - 17 Years Old
  Place Name Pts Location 
  7 Feilsfames Noorl 15 AURORA, CO
+. . .
 ```
 
 ## `atastandings --worlds --state co --search aurora`
@@ -122,6 +123,7 @@ DIVISION WORLDS B01E Creative Weapons Boys 1st Degree Creative Weapons Black Bel
 DIVISION WORLDS B01E X-Treme Forms Boys 1st Degree X-Treme Forms Black Belt 15 - 17 Years Old
  Place Name Pts Location 
  7 Ondmientmuhabitant Dimaceensa 15 AURORA, CO
+. . .
 ```
 
 ## `atastandings --worlds --state co --search aurora --maximum-place 1`
@@ -137,6 +139,7 @@ DIVISION CO B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location 
  1 Disipsum Blieorlpironp 14 AURORA, CO
 DIVISION CO B01B Sparring Boys 1st Degree Black Belt 9 - 10 Years Old
+. . .
 ```
 
 ## `atastandings --state co --search aurora --maximum-place 1`
@@ -152,6 +155,7 @@ DIVISION CO B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
 DIVISION CO B01B Sparring Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location 
  1 Ingillfanunc Porttitorsde 20 AURORA, CO
+. . .
 ```
 
 ## `atastandings --by-person-with-divisions --state co --search aurora --maximum-place 1 --omit points --omit location --omit region`
@@ -169,6 +173,7 @@ Ulnlnapsaines Counbiacamet | 1 MBCB X-Treme Forms Men Special Abilities X-Treme 
 Pleletnesuqeatciit Crasupesndisses | 1 G01D Combat Weapons Girls 1st Degree Black Belt 13 - 14 Years Old
 Tempusper Dnigissmidtortor | 1 B01C Sparring Boys 1st Degree Black Belt 11 - 12 Years Old
 Pluvianrhbaitnat Dolorvelit | 1 MBCB Weapons Men Special Abilities Black Belt-Cognitive 30 - 99 Years Old
+. . .
 ```
 
 ## `atastandings --by-person --state co --search aurora --maximum-place 1 --omit location`
@@ -185,6 +190,7 @@ Erhapretra Commodocornare
 Aphsleuslmtea Cosnequtahparerta
 Rfemneumtue Crussusgtiist
 Auguesollicitudin Daipbusdamse
+. . .
 ```
 
 ## `atastandings --state co --search aurora --maximum-place 10`
@@ -201,6 +207,7 @@ DIVISION CO B01B Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
 DIVISION CO B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location 
  1 Pretiumusjtlo Psmuoorl 14 AURORA, CO 2 Uctrounra Quisafciilssi 6 AURORA, CO 5 Natoquersiituqetr Raseetnalqiueta Qiusqeurviadha 3 AURORA, CO 5 Tacitiporta Saasaac 3 AURORA, CO 8 Nlisnihb Iidn 1 AURORA, CO 8 Antenma Tlelsunnuc 1 AURORA, CO
+. . .
 ```
 
 ## `atastandings --by-person-with-divisions --state co --search aurora --maximum-place 10 --omit points --omit location --omit region`
@@ -219,6 +226,7 @@ Mrobimdingissmi Actima | 6 B23C Combat Weapons Boys 2nd, 3rd Degree Black Belt 1
 Pahselluspsupsendsise Acutrovsetibluum | 6 GCOB Forms Girls Color Belt 9 - 10 Years Old
 Ahcieta Adipiscingsme | 3 GCOB Forms Girls Color Belt 9 - 10 Years Old
 Diooconsequat Adpiiscniglobortis | 8 BCOB Combat Weapons Boys Color Belt 9 - 10 Years Old
+. . .
 ```
 
 ## `atastandings --by-person --state co --search aurora --maximum-place 10 --omit location`
@@ -236,6 +244,7 @@ Acutrofuegita Aeneanultrices
 Enaitbuspivavumsvv Afciilssifinibus
 Justoposuere Ahbiatsessgtiist
 Mrobiuisomd Nmarurtum Ahcerp
+. . .
 ```
 
 ## `atastandings --worlds --division-code B01B`
@@ -251,6 +260,7 @@ DIVISION WORLDS B01B Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
 DIVISION WORLDS B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location 
  1 Molestielorem Ptaruirnteinterdum 91 PHOENIX, AZ 2 Nteaornare Notsraocnsceteutr 79 NAPLES, FL 3 Uallollcitiuind Ditcumtsid Cnoubaiim 58 CUTLER BAY, FL 4 Aruct Nveeanisttrotort 54 SALINE, MI 5 Urssueclriesque Ocnsqeutaaccumsan 52 DENHAM SPRINGS, LA 6 Atciitlqiamu Pretiummobri 51 PETALUMA, CA 7 Bibenmdufelis Aneeanami 46 CHULA VISTA, CA 7 Pahselulssaodlses Niterudmeelmetnume 46 ALLEN, TX 9 Eichulatmia Nqeuensenectus 42 MATTHEWS, NC 9 Idctmustdasas Mollismaeta 42 FOREST HILL, MD
+. . .
 ```
 
 ## `atastandings --division-code W23A --division-code M23A`
@@ -267,6 +277,7 @@ DIVISION WORLDS W23A Weapons Women 2nd, 3rd Degree Black Belt 18 - 29 Years Old
 DIVISION WORLDS W23A Combat Weapons Women 2nd, 3rd Degree Black Belt 18 - 29 Years Old
  Place Name Pts Location 
  1 Aneenanec Nostraltircise 64 HIGHLAND, IN 1 Scelerisqueesnecuts Convallismorbim 64 SULPHUR SPRINGS, TX 3 Naotquenauctor Adpiubsgetee 62 JONESBORO, AR 4 Sociosquhabitasse Raivdagmobri 53 MISHAWAKA, IN 5 Tepmuslibero Parturientveihcual 39 BARTLETT, TN 6 Tacitipuursq Feamsfusrsuu 38 ROANOKE, TX 7 Massaraseetn Hnedrreithatits 36 DES PERES, MO 7 Amseujstol Odlropatrurinet 36 LAKEWOOD, CO 7 Luctusnisl Isdn 36 ALLEN, TX 10 Usjtlosollicitudin Smecondimentum 35 LAVEEN, AZ
+. . .
 ```
 
 # Installation
