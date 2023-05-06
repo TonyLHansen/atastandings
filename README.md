@@ -46,6 +46,24 @@ be interested in who the first place leaders are.
 For example, `--maximum-place 1` would print only the first place leaders,
 and `--maximum-place 4` will print only the top four contenders.
 
+## By Person Printing (Champion Status)
+Normally, `atastandings` prints the results arranged by division.
+You might prefer the printout to be arranged by an individual's name instead, with or without the division information.
+The names are printed in order, sorted by last name.
+(Suffixes like "Jr." and prefixes like "van" are taken into consideration in the sorting process.)
+
+* `--by-person`, `-b` -- Print the names and location of each individual.
+* `--by-person-with-division`, `-B` -- Print the names and location of each individual, followed by a list of their divisions.
+
+## Omitting Information
+Normally, `atastandings` will print all information, including such things as the location, place and points.
+You can choose to omit pieces of information.
+
+* `--omit item`, `-O item` -- Omit information from the printouts, where `item` is one of `location`, `place`, `points`, `region`, `division` or `code`.
+The `region` is either the world "WORLDS" or the state or province name.
+The code is the division code.
+This may be specified multiple times.
+
 ## Web Cache
 By default, `atastandings` will maintain a cache of the web sites, so that you can have faster response times
 when you run the program multiple times.
@@ -82,9 +100,25 @@ Show all students from Aurora, Colorado in either the worlds or Colorado state s
 Show all students from Aurora, Colorado leading the competition in either the worlds or state standings.
 1. `atastandings --state co --search aurora --maximum-place 1`
 After the results are finalized, show all state champions from Aurora, Colorado.
-1. `atastandings --state co --search aurora`
+1. `atastandings --by-person-with-divisions --state co --search aurora --maximum-place 1 --omit points --omit location --omit region`
+After the results are finalized, show all state champions from Aurora, Colorado, sorted by name.
+Include with each name the divisions they are state champions in.
+Do not print the location, points or region values.
+1. `atastandings --by-person --state co --search aurora --maximum-place 1 --omit location`
+After the results are finalized, show all state champions from Aurora, Colorado, sorted by name.
+Print *ONLY* their names, without their location.
+1. `atastandings --state co --search aurora --maximum-place 10`
 After the results are finalized, show all students from Aurora, Colorado
 who are eligible to compete in the District Champoionships.
+1. `atastandings --by-person-with-divisions --state co --search aurora --maximum-place 10 --omit points --omit location --omit region`
+After the results are finalized, show all students from Aurora, Colorado, sorted by name,
+who are eligible to compete in the District Champoionships.
+Include with each name the divisions they are state champions in.
+Do not print the location, points or region values.
+1. `atastandings --by-person --state co --search aurora --maximum-place 10 --omit location`
+After the results are finalized, show all students from Aurora, Colorado, sorted by name,
+who are eligible to compete in the District Champoionships.
+Print *ONLY* their names, without their location.
 1. `atastandings --worlds --division-code B01B`
 Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` (`B01B`) division at Worlds.
 1. `atastandings --worlds --division-code B01B`

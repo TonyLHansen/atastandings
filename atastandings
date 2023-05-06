@@ -6,6 +6,7 @@
 
 import argparse
 import glob
+import html
 import os
 import re
 import sys
@@ -137,13 +138,17 @@ def get_code(l):
     return l
 
 
+def fix_html(s):
+    """Look in a string and replace instances of &xyz; with the equivalent values"""
+    return html.unescape(s)
+
+
 def get_codes(args, url):
     """Retrieve a URL. Retrieve the list of codes as an array of [division-code, division-name]"""
     lines = fgrep("code=", join_li_td_tr(get_url(args, url)))
     nl = []
     for l in lines:
         nl.append([get_code(l), strip_html(l).replace("VIEW", "")])
-    # print(f"page={nl}")
     return nl
 
 
@@ -160,16 +165,19 @@ def get_info(args, code, region, url, border):
     dispcode = code[0].split("=")[1]
     for i, val in enumerate(lines):
         if "text-primary" in val:
-            lines[i] = f"DIVISION {region} {dispcode} {val}"
+            lines[i] = f"DIVISION {dispcode} {val}"
         lines[i] = re.sub(" +", " ", lines[i])
         lines[i] = re.sub('style="[^"]*"', "", lines[i])
         lines[i] = re.sub('class="[^"]*"', "", lines[i])
 
     lines = join_li_td_tr(lines)
+
     nl = []
     for l in lines:
         l = l.replace("</td>", "").replace("</th>", "").replace("</li>", "")
-        l = re.sub("<[^>]*>", "", l)
+        l = re.sub("<t[rd][^>]*>", " | ", l)
+        l = re.sub(r"^\s+[|]\s+", " ", l)
+        l = re.sub("<[^>]*>", "", l)  # eliminates ALL html tags
         l = (
             l.replace("The points below", "")
             .replace("Back to Map", "")
@@ -180,31 +188,166 @@ def get_info(args, code, region, url, border):
             continue
         nl.append(l)
 
-    # Gather up a series of header lines.
-    # Print them only when a person's name is subsequently printed.
-    # Otherwise throw them away.
-    nl2 = []
-    hdrs = []
+    # Convert the division info to a structure
+    info = []
+    curinfo = None
     for l in nl:
         if l.startswith("DIVISION"):
-            hdrs = [l]
+            div_parts = l.strip().split()
+            curinfo = {
+                "code": div_parts[1],
+                "division": " ".join(div_parts[2:]),
+                "region": region,
+                "other_header": [],
+                "places": [],
+            }
+            info.append(curinfo)
         elif re.match(r"\s*[a-zA-Z]", l):
-            hdrs.append(l)
+            if curinfo is not None:
+                curinfo["other_header"].append(l)
         elif re.match(r"\s*[0-9]+ .*" + args.search, l, flags=re.IGNORECASE):
-            place = re.match(r"\s*([0-9]+)", l).group(1)
-            if int(place) <= args.maximum_place:
-                if hdrs:
-                    nl2 += [""]
-                    nl2 += hdrs
-                hdrs = []
-                nl2.append(l)
-    print_lines(nl2)
+            if curinfo is not None:
+                place_info = l.split("|")
+                curinfo["places"].append(
+                    {
+                        "place": int(place_info[0]),
+                        "name": fix_html(place_info[1].strip()),
+                        "points": int(place_info[2].strip()),
+                        "location": place_info[3].strip(),
+                    }
+                )
+    return info
+
+
+def trim_info(args, info):
+    """
+    Apply the --search and --maximum-place criteria against the info array.
+    """
+    for i in info:
+        new_places = []
+        for j in i["places"]:
+            keep = True
+            if j["place"] > args.maximum_place:
+                keep = False
+            if args.search:
+                if args.search.lower() not in j["name"].lower() and args.search.lower() not in j["location"].lower():
+                    keep = False
+            if keep:
+                new_places.append(j)
+        i["places"] = new_places
+    new_info = []
+    for i in info:
+        if i["places"]:
+            new_info.append(i)
+    return new_info
+
+
+def info_by_name(info):
+    """given a structure'd set of standings, print it by division"""
+    # {
+    #    sortable_name => { "name": str, "location": str,
+    #              "divisions": [
+    #                  { "region": str, "division": str, "code": str, "place": int, "points": int }, ...
+    #              ]}
+    name_info = {}
+    for i in info:
+        for j in i["places"]:
+            sname = sortable_name(j["name"])
+            if sname not in name_info:
+                name_info[sname] = {"name": j["name"], "divisions": [], "location": j["location"]}
+            name_info[sname]["divisions"].append(
+                {
+                    "region": i["region"],
+                    "division": i["division"],
+                    "code": i["code"],
+                    "place": j["place"],
+                    "points": j["points"],
+                }
+            )
+
+    return name_info
+
+
+def omitted(args, nm, s):
+    """
+    Check if nm is in the args.omit list.
+    If not, print the string s without a line ending.
+    If so, return an empty string.
+    """
+    return s if not args.omit or nm not in args.omit else ""  # if nm in args.omit else s
+
+
+def print_omitted(args, nm, s):
+    """
+    Check if nm is in the args.omit list.
+    If not, print the string s without a line ending.
+    """
+    print(omitted(args, nm, s), end="")
+
+
+def sortable_name(nm):
+    """
+    Return a name as LAST, FIRST.
+    Suffixes "jr.", "sr.", "i", "ii", "iii" and "iv" are considered part of the last name
+    Prefixes "van", "san", "de", "da", "los" "st.", "saint" are considered part of the last name
+    """
+    nm_parts = nm.lower().split()
+    end = len(nm_parts)
+    suffixes = ["jr.", "sr.", "i", "ii", "iii", "iv"]
+    prefixes = ["van", "san", "de", "da", "los", "st.", "saint"]
+    if nm_parts[end - 1] in suffixes:
+        end -= 1
+    while end > 2 and nm_parts[end - 2] in prefixes:
+        end -= 1
+    return " ".join(nm_parts[end - 1 :]) + ", " + " ".join(nm_parts[0 : end - 1])
+
+
+def print_info_by_name(args, info):
+    """given a structure'd set of standings, print it by name"""
+    name_info = info_by_name(info)
+    for name in sorted(name_info.keys()):
+        val = name_info[name]
+        print_omitted(args, "name", val["name"])
+        print_omitted(args, "location", f' {val["location"]}')
+        if args.by_person_with_division:
+            for div in val["divisions"]:
+                print(" |", end="")
+                print_omitted(args, "region", f' {div["region"]}')
+                print_omitted(args, "place", f' {div["place"]}')
+                print_omitted(args, "code", f' {div["code"]}')
+                print_omitted(args, "division", f' {div["division"]}')
+                print_omitted(args, "points", f' {div["points"]}')
+        print("")
+
+
+def print_info_by_division(args, info):
+    """given a structure'd set of standings, print it by division"""
+    for i in info:
+        print(f"DIVISION", end="")
+        print_omitted(args, "region", f' {i["region"]}')
+        print_omitted(args, "code", f' {i["code"]}')
+        print_omitted(args, "division", f' {i["division"]}')
+        print("")
+        for j in i["other_header"]:
+            print(j)
+        for j in i["places"]:
+            print_omitted(args, "place", f' {j["place"]}')
+            print_omitted(args, "name", f' {j["name"]}')
+            print_omitted(args, "points", f' {j["points"]}')
+            print_omitted(args, "location", f' {j["location"]}')
+
+
+def print_info(args, info):
+    """given a structure'd set of standings, print it appropriately"""
+    if args.by_person or args.by_person_with_division:
+        print_info_by_name(args, info)
+    else:
+        print_info_by_division(args, info)
 
 
 def print_worlds(args):
     """print the worlds standings"""
     if args.division_code:
-        # print(f"args.division_code:={args.division_code}")
         codes = [[f"code={code}", ""] for code in args.division_code]
     else:
         codes = get_codes(args, WORLDBASE)
@@ -215,9 +358,16 @@ def print_worlds(args):
             print(f"{code[0].split('=')[1]}: {code[1]}")
 
     else:
-        print("WORLD STANDINGS")
+        if args.search:
+            print(f"WORLD STANDINGS, searching for {args.search}, maximum place of {args.maximum_place}")
+        else:
+            print(f"WORLD STANDINGS, maximum place of {args.maximum_place}")
+        all_info = []
         for code in codes:
-            get_info(args, code, "WORLDS ", f"{WORLDBASE}?{code[0]}", "INFO")
+            info = get_info(args, code, "WORLDS", f"{WORLDBASE}?{code[0]}", "INFO")
+            all_info += info
+        all_info = trim_info(args, all_info)
+        print_info(args, all_info)
 
 
 def print_states(args):
@@ -240,7 +390,6 @@ def print_states(args):
             COUNTRY = "US"
 
         if args.division_code:
-            # print(f"args.division_code:={args.division_code}")
             codes = [[f"code={code}", ""] for code in args.division_code]
         else:
             codes = get_codes(args, f"{STATEBASE}?country={COUNTRY}&state={state}")
@@ -251,9 +400,37 @@ def print_states(args):
                 print(f"{code[0].split('=')[1]}: {code[1]}")
 
         else:
-            print(f"STATE STANDINGS FOR {state}")
+            if args.search:
+                print(
+                    f"STATE STANDINGS FOR {state}, searching for {args.search}, maximum place of {args.maximum_place}"
+                )
+            else:
+                print(f"STATE STANDINGS FOR {state}, maximum place of {args.maximum_place}")
+            all_info = []
             for code in codes:
-                get_info(args, code, f"{state} ", f"{STATEBASE}?country={COUNTRY}&state={state}&{code[0]}", "CONTENT")
+                info = get_info(args, code, state, f"{STATEBASE}?country={COUNTRY}&state={state}&{code[0]}", "CONTENT")
+                all_info += info
+            all_info = trim_info(args, all_info)
+            print_info(args, all_info)
+
+
+def check_omit(args):
+    """check the values of the --omit option"""
+    if args.omit:
+        omit_choices = [
+            "location",
+            "region",
+            "place",
+            "code",
+            "division",
+            "points",
+        ]
+        for omit in args.omit:
+            if omit not in omit_choices:
+                sys.exit(
+                    f"{sys.argv[0]}: error: argument -O/--omit: invalid choice: '{omit}' (choose from "
+                    f"{omit_choices})"
+                )
 
 
 def main():
@@ -295,7 +472,22 @@ def main():
         action="store_true",
     )
     parser.add_argument(
+        "-b",
+        "--by-person",
+        help="Print the standings by name",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-B",
+        "--by-person-with-division",
+        help="Print the standings by name",
+        action="store_true",
+    )
+    parser.add_argument(
         "-D", "--do-not-write-cache", help="Do not write a cache of the web pages.", action="store_true"
+    )
+    parser.add_argument(
+        "-O", "--omit", help="Item to skip printing. May be specified multiple times.", type=str, action="append"
     )
     parser.add_argument(
         "--clean-cache", help="Remove all of the files in the current cache of the web pages.", action="store_true"
@@ -308,6 +500,8 @@ def main():
         default=0,
     )
     args = parser.parse_args()
+
+    check_omit(args)
 
     if args.clean_cache:
         clean_cache(args)
