@@ -19,11 +19,26 @@ test:
 	./atastandings -v -S nj -s parlin -p 10
 	./atastandings -v -S nj -s parlin -p 1
 
+readme:
+	./atastandings --randomize-names lorem.words --worlds --search aurora | sed 10q
+	./atastandings --randomize-names lorem.words --worlds --state co --search aurora | sed 10q
+	./atastandings --randomize-names lorem.words --worlds --state co --search aurora --maximum-place 1 | sed 10q
+	./atastandings --randomize-names lorem.words --state co --search aurora --maximum-place 1 | sed 10q
+	./atastandings --randomize-names lorem.words --by-person-with-divisions --state co --search aurora --maximum-place 1 --omit points --omit location --omit region | sed 10q
+	./atastandings --randomize-names lorem.words --by-person --state co --search aurora --maximum-place 1 --omit location | sed 10q
+	./atastandings --randomize-names lorem.words --state co --search aurora --maximum-place 10 | sed 10q
+	./atastandings --randomize-names lorem.words --by-person-with-divisions --state co --search aurora --maximum-place 10 --omit points --omit location --omit region | sed 10q
+	./atastandings --randomize-names lorem.words --by-person --state co --search aurora --maximum-place 10 --omit location | sed 10q
+	./atastandings --randomize-names lorem.words --worlds --division-code B01B | sed 10q
+	./atastandings --randomize-names lorem.words --division-code W23A --division-code M23A | sed 10q
 
 parlin:
 	./atastandings --worlds -s parlin
 	./atastandings --state nj -s parlin --maximum-place 1
 	./atastandings --state nj -s parlin --maximum-place 10
+
+save:
+	./atastandings -b -W -S nj -S pa -S ca -O location
 
 run-black:
 	black -l 120 atastandings
