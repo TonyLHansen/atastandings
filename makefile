@@ -1,9 +1,9 @@
 test:
 	./atastandings --help # > /dev/null
-	./atastandings -v -l
-	./atastandings -v -I -l -S nj
-	./atastandings -v -S nj
-	./atastandings -v -S nj -p 3
+	./atastandings -l
+	./atastandings -I -l -S nj
+	./atastandings -S nj
+	./atastandings -S nj -p 3
 	./atastandings -B -W -S nj -s parlin -p 10
 	./atastandings -b -W -S nj -s parlin -p 10
 	./atastandings -b -W -O location
@@ -15,9 +15,9 @@ test:
 	./atastandings -b -W -S nj -s parlin -p 10 -O points -O location -O region
 	./atastandings -B -W -S nj -s parlin -p 1 -O points -O location -O region
 	./atastandings -b -W -S nj -s parlin -p 1 -O points -O location -O region
-	./atastandings -v -W -S nj -s parlin -p 10
-	./atastandings -v -S nj -s parlin -p 10
-	./atastandings -v -S nj -s parlin -p 1
+	./atastandings -W -S nj -s parlin -p 10
+	./atastandings -S nj -s parlin -p 10
+	./atastandings -S nj -s parlin -p 1
 
 readme:
 	./atastandings -R lorem.words -M 10 \
