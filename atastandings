@@ -7,6 +7,7 @@
 import argparse
 import glob
 import html
+import io
 import os
 import random
 import re
@@ -566,10 +567,26 @@ def main():
         action="count",
         default=0,
     )
-    grp_other.add_argument("--randomize-names", help=argparse.SUPPRESS, type=str)
+    suppressed_arguments = [("-R", "--randomize-names"), ("-G", "--generate-readme"), ("-M", "--maximum-lines")]
+    for a, arg in suppressed_arguments:
+        grp_other.add_argument(a, arg, help=argparse.SUPPRESS, type=str)
     args = parser.parse_args()
 
     check_omit(args)
+    if args.generate_readme:
+        print(f"## `{args.generate_readme}`")
+        print(f"`{os.path.basename(sys.argv[0])}", end="")
+        sa1 = [item for sa in suppressed_arguments for item in sa]
+        for arg in sys.argv[1:]:
+            if arg not in sa1:
+                print(f" {arg}", end="")
+        print("`")
+        print("")
+        print("")
+        print("``` shell")
+        if args.maximum_lines:
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
 
     if args.clean_cache:
         clean_cache(args)
@@ -585,6 +602,20 @@ def main():
             print_states(args)
     except BrokenPipeError:
         pass
+
+    if args.generate_readme:
+        if args.maximum_lines:
+            sio = sys.stdout
+            sys.stdout = old_stdout
+            ml = int(args.maximum_lines)
+            for i, ln in enumerate(sio.getvalue().splitlines()):
+                if i < ml:
+                    print(ln)
+                elif i == ml:
+                    print(". . .")
+                else:
+                    break
+        print("```")
 
 
 if __name__ == "__main__":

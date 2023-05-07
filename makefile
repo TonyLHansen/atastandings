@@ -20,17 +20,41 @@ test:
 	./atastandings -v -S nj -s parlin -p 1
 
 readme:
-	./atastandings --randomize-names lorem.words --worlds --search aurora | sed 10q
-	./atastandings --randomize-names lorem.words --worlds --state co --search aurora | sed 10q
-	./atastandings --randomize-names lorem.words --worlds --state co --search aurora --maximum-place 1 | sed 10q
-	./atastandings --randomize-names lorem.words --state co --search aurora --maximum-place 1 | sed 10q
-	./atastandings --randomize-names lorem.words --by-person-with-divisions --state co --search aurora --maximum-place 1 --omit points --omit location --omit region | sed 10q
-	./atastandings --randomize-names lorem.words --by-person --state co --search aurora --maximum-place 1 --omit location | sed 10q
-	./atastandings --randomize-names lorem.words --state co --search aurora --maximum-place 10 | sed 10q
-	./atastandings --randomize-names lorem.words --by-person-with-divisions --state co --search aurora --maximum-place 10 --omit points --omit location --omit region | sed 10q
-	./atastandings --randomize-names lorem.words --by-person --state co --search aurora --maximum-place 10 --omit location | sed 10q
-	./atastandings --randomize-names lorem.words --worlds --division-code B01B | sed 10q
-	./atastandings --randomize-names lorem.words --division-code W23A --division-code M23A | sed 10q
+	./atastandings -R lorem.words -M 10 \
+		-G "Show School's Students in the World Standings" \
+		--worlds --search aurora
+	./atastandings -R lorem.words -M 10 \
+		-G "Show School's Students in Either Worlds or State Standings" \
+		--worlds --state co --search aurora
+	./atastandings -R lorem.words -M 10 \
+		-G "Show Students leading Competition in Worlds or States" \
+		--worlds --state co --search aurora --maximum-place 1
+	./atastandings -R lorem.words -M 10 \
+		-G "Show State Champions (after final results)" \
+		--state co --search aurora --maximum-place 1
+	./atastandings -R lorem.words -M 10 \
+		-G "Show State Champion Names with Divisions (after final results)" \
+		--by-person-with-divisions --state co --search aurora --maximum-place 1 \
+		--omit points --omit location --omit region
+	./atastandings -R lorem.words -M 10 \
+		-G "Print State Champion Names (after final results)" \
+		--by-person --state co --search aurora --maximum-place 1 --omit location
+	./atastandings -R lorem.words -M 10 \
+		-G "Show District Championship Eligible Students by Division (after final results)" \
+		--state co --search aurora --maximum-place 10
+	./atastandings -R lorem.words -M 10 \
+		-G "Show District Championship Eligible Students by Name (after final results)" \
+		--by-person-with-divisions --state co --search aurora --maximum-place 10 \
+		--omit points --omit location --omit region
+	./atastandings -R lorem.words -M 10 \
+		-G "Show Names of District Championship Eligible Students (after final results)" \
+		--by-person --state co --search aurora --maximum-place 10 --omit location
+	./atastandings -R lorem.words -M 10 \
+		-G "Show Competitors of a Division" \
+		--worlds --division-code B01B
+	./atastandings -R lorem.words -M 10 \
+		-G "Show Competitors of Multiple Divisions" \
+		--division-code W23A --division-code M23A
 
 parlin:
 	./atastandings --worlds -s parlin
