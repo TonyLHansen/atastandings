@@ -288,7 +288,7 @@ DIVISION WORLDS B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
 . . .
 ```
 
-## Show Competitors of Multiple Divisions
+## Show Competitors of Multiple Divisions at Worlds
 `atastandings --division-code W23A --division-code M23A`
 Show all of the competitors in the top 10 for both the `WOMENS 2nd, 3rd Degree Black Belt Age 18 - 29` (`W23A`)
 and `MENS 2nd, 3rd Degree Black Belt Age 18 - 29` (`M23A`) divisions.
