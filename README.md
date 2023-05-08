@@ -99,7 +99,7 @@ All sample output uses fictitious names, and only shows the first 10 lines of th
 Show all students from Aurora, Colorado in the world standings.
 
 ``` shell
-WORLD STANDINGS, searching for aurora, maximum place of 99
+WORLD STANDINGS, searching for 'aurora, co' maximum place of 99
 DIVISION WORLDS B01E Creative Forms Boys 1st Degree Creative Forms Black Belt 15 - 17 Years Old
  Place Name Pts Location 
  6 Vestibulumat 20 AURORA, CO
@@ -116,7 +116,7 @@ DIVISION WORLDS B01E X-Treme Forms Boys 1st Degree X-Treme Forms Black Belt 15 -
 `atastandings --worlds --state co --search aurora`
 Show all students from Aurora, Colorado in either the worlds or Colorado state standings.
 ``` shell
-WORLD STANDINGS, searching for aurora, maximum place of 99
+WORLD STANDINGS, searching for 'aurora', maximum place of 99
 DIVISION WORLDS B01E Creative Forms Boys 1st Degree Creative Forms Black Belt 15 - 17 Years Old
  Place Name Pts Location 
  6 Oseurepcnoubai 20 AURORA, CO
@@ -135,9 +135,9 @@ DIVISION WORLDS B01E X-Treme Forms Boys 1st Degree X-Treme Forms Black Belt 15 -
 Show all students from Aurora, Colorado leading the competition in either the worlds or state standings.
 
 ``` shell
-WORLD STANDINGS, searching for aurora, maximum place of 1
+WORLD STANDINGS, searching for 'aurora', maximum place of 1
 
-STATE STANDINGS FOR CO, searching for aurora, maximum place of 1
+STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 1
 DIVISION CO B01B Forms Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location 
  1 Xeconstecertu Daipbusdloitar 8 AURORA, CO
@@ -154,7 +154,7 @@ DIVISION CO B01B Sparring Boys 1st Degree Black Belt 9 - 10 Years Old
 After the results are finalized, show all state champions from Aurora, Colorado.
 
 ``` shell
-STATE STANDINGS FOR CO, searching for aurora, maximum place of 1
+STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 1
 DIVISION CO B01B Forms Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location 
  1 Oiocsquptoenit 8 AURORA, CO
@@ -175,7 +175,7 @@ Include with each name the divisions they are state champions in.
 Do not print the location, points or region values.
 
 ``` shell
-STATE STANDINGS FOR CO, searching for aurora, maximum place of 1
+STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 1
 Eclriesquescelerisque Ailcisimagna | 1 G01E Creative Weapons Girls 1st Degree Creative Weapons Black Belt 15 - 17 Years Old
 Tuvle Asectrupluvianr | 1 B23C X-Treme Forms Boys 2nd, 3rd Degree X-Treme Forms Black Belt 11 - 12 Years Old
 Ulalccaumsan Auugelgiual | 1 B23C Sparring Boys 2nd, 3rd Degree Black Belt 11 - 12 Years Old
@@ -195,7 +195,7 @@ After the results are finalized, show all state champions from Aurora, Colorado,
 Print *ONLY* their names, without their location.
 
 ``` shell
-STATE STANDINGS FOR CO, searching for aurora, maximum place of 1
+STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 1
 Upesndissestellus Abhitasseaenquen
 Accumsanfaucibus
 Lroempenatibus Amursinam
@@ -215,7 +215,7 @@ After the results are finalized, show all students from Aurora, Colorado
 who are eligible to compete in the District Champoionships.
 
 ``` shell
-STATE STANDINGS FOR CO, searching for aurora, maximum place of 10
+STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 10
 DIVISION CO B01B Forms Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location 
  1 Einmdioo 8 AURORA, CO 4 Tpemsuidctmustd Firnglilafusicpti 5 AURORA, CO 7 Lualcmoperrocmmdoocc Velittorquent Ultreicsmlifeend 1 AURORA, CO
@@ -237,7 +237,7 @@ Include with each name the divisions they are state champions in.
 Do not print the location, points or region values.
 
 ``` shell
-STATE STANDINGS FOR CO, searching for aurora, maximum place of 10
+STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 10
 Evhiuclavpulvinar Aatnemie | 4 BCOB Sparring Boys Color Belt 9 - 10 Years Old
 Gravidapahsellusp Abaittnmlaesaudam | 2 WCOB Sparring Women Color Belt 30 - 39 Years Old
 Olremlonidmetnumc Abiatntlndaict | 6 B23E Forms Boys 2nd, 3rd Degree Black Belt 15 - 17 Years Old
@@ -258,7 +258,7 @@ who are eligible to compete in the District Champoionships.
 Print *ONLY* their names, without their location.
 
 ``` shell
-STATE STANDINGS FOR CO, searching for aurora, maximum place of 10
+STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 10
 Blanditveilt Abiatntcelreisqeu
 Ollcitiuindmaximus Aceenasrupis
 Ocmmdooex Aciinasoadless

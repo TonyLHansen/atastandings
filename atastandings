@@ -138,8 +138,9 @@ def get_url(args, url):
         if not args.do_not_write_cache:
             if args.verbose:
                 print(f"writing to {cachename}")
-            with open(f"{cachename}", "w") as fp:
+            with open(f"{cachename}.tmp", "w") as fp:
                 fp.write(r.text)
+            os.rename(f"{cachename}.tmp", f"{cachename}")
         text = r.text
 
     return text.splitlines()
@@ -420,7 +421,7 @@ def print_worlds(args):
 
     else:
         if args.search:
-            print(f"WORLD STANDINGS, searching for {args.search}, maximum place of {args.maximum_place}")
+            print(f"WORLD STANDINGS, searching for '{args.search}', maximum place of {args.maximum_place}")
         else:
             print(f"WORLD STANDINGS, maximum place of {args.maximum_place}")
         all_info = []
@@ -463,7 +464,7 @@ def print_states(args):
         else:
             if args.search:
                 print(
-                    f"STATE STANDINGS FOR {state}, searching for {args.search}, maximum place of {args.maximum_place}"
+                    f"STATE STANDINGS FOR {state}, searching for '{args.search}', maximum place of {args.maximum_place}"
                 )
             else:
                 print(f"STATE STANDINGS FOR {state}, maximum place of {args.maximum_place}")
