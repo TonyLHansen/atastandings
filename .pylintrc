@@ -19,7 +19,7 @@ output-format=parseable
 [MISCELLANEOUS]
 [SIMILARITIES]
 [FORMAT]
-indent=string='    '
+indent-string='    '
 [BASIC]
 constant-rgx=[a-zA-Z][A-Z0-9a-z_]*$
 [ELIF]
