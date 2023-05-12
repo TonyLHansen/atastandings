@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-""" Search the ATA World and State/Province standings """
+""" Search the 2023 ATA World, District and State/Province standings """
 
 # See the LICENSE file for the license to use and modify this program.
 
@@ -27,6 +27,37 @@ RANDOM_WORDS = []
 USED_WORDS = []
 RANDOM_NAME_MAP = {}
 
+OMIT_CHOICES = [
+    "location",
+    "region",
+    "place",
+    "code",
+    "division",
+    "points",
+]
+DISTRICTS = {
+    "Northeast": ["va", "wv", "md", "pa", "de", "nj", "ny", "ct", "ri", "ma", "vt", "nh", "me", "dc"],
+    "Southeast": ["tn", "nc", "sc", "ga", "fl", "al", "ms"],
+    "Mid-America": ["wi", "mi", "il", "in", "oh", "ky", "oh"],
+    "Midwest": ["ne", "ka", "mo"],
+    "South": ["tx", "la", "ar", "ok"],
+    "Southwest": ["az", "nv", "ca"],
+    "Rockies": ["nm", "co", "ut", "wy", "mo"],
+    "Northwest": ["id", "or", "wa", "bc", "bc", "sk", "mb"],
+}
+
+COMPETITIONS = {
+    "forms": "forms",
+    "weapons": "weapons",
+    "combat-weapons": "combat weapons",
+    "sparring": "sparring",
+    "creative-forms": "creative forms",
+    "creative-weapons": "creative weapons",
+    "x-treme-forms": "x-treme forms",
+    "x-treme-weapons": "x-treme weapons",
+}
+
+SUPPRESSED_ARGUMENTS = [("-R", "--randomize-names"), ("-G", "--generate-readme"), ("-M", "--maximum-lines")]
 
 def get_next_random_word():
     """
@@ -34,6 +65,7 @@ def get_next_random_word():
     Push the word onto USED_WORDS.
     If none are left in RANDOM_WORDS, reassign RANDOM_WORDS and reshuffle.
     """
+    # pylint: disable=global-statement
     global RANDOM_WORDS, USED_WORDS
     if not RANDOM_WORDS:
         RANDOM_WORDS = USED_WORDS
@@ -49,6 +81,7 @@ def get_random_word(nm):
     Given a name, return a random name to use in its place.
     Do this by grabbing two random words at a time from the front of the list.
     """
+    # pylint: disable=global-statement
     global RANDOM_NAME_MAP
     while True:
         repl_name = get_next_random_word().capitalize() + get_next_random_word()
@@ -64,16 +97,17 @@ def get_random_name(args, nm):
     if not args.randomize_names:
         return nm
 
+    # pylint: disable=global-statement
     global RANDOM_WORDS, USED_WORDS, NAME_SUFFIXES
     if not RANDOM_WORDS and not USED_WORDS:
         with open(args.randomize_names) as fp:
             for l in fp:
                 RANDOM_WORDS.append(l.strip().lower())
         random.shuffle(RANDOM_WORDS)
-        for nm in NAME_SUFFIXES:
-            RANDOM_NAME_MAP[nm] = nm
-        for nm in NAME_PREFIXES:
-            RANDOM_NAME_MAP[nm] = nm
+        for nms in NAME_SUFFIXES:
+            RANDOM_NAME_MAP[nms] = nms
+        for nmp in NAME_PREFIXES:
+            RANDOM_NAME_MAP[nmp] = nmp
 
     newname = []
     for l in nm.lower().split():
@@ -108,6 +142,9 @@ def get_url(args, url):
     Cache files older than 24 hours are automatically ignored.
     """
 
+    if args.dots:
+        print(".", end="", file=sys.stderr)
+        sys.stderr.flush()
     urlname = re.sub("[^a-zA-Z0-9_]", "", url)
     cachename = f"{args.cache_directory}/atastandings.{urlname}"
     usefile = not args.ignore_existing_cache
@@ -117,12 +154,14 @@ def get_url(args, url):
                 print(f"looking for {args.cache_directory}/atastandings.{urlname}")
             st = os.stat(cachename)
             if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
-                os.unlink(cachename)
-                if args.verbose:
-                    print(f"{cachename} is too old -- ignored")
+                if not args.ignore_cache_times:
+                    os.unlink(cachename)
+                    if args.verbose:
+                        print(f"{cachename} is too old -- ignored")
 
             with open(cachename) as fp:
                 text = fp.read()
+
         except FileNotFoundError:
             usefile = False
 
@@ -253,7 +292,7 @@ def get_info(args, code, region, url, border):
 
     # Convert the division info to a structure
     info = []
-    curinfo = None
+    curinfo = {}
     for l in nl:
         if l.startswith("DIVISION"):
             div_parts = l.strip().split()
@@ -266,10 +305,10 @@ def get_info(args, code, region, url, border):
             }
             info.append(curinfo)
         elif re.match(r"\s*[a-zA-Z]", l):
-            if curinfo is not None:
+            if curinfo:
                 curinfo["other_header"].append(l)
         elif re.match(r"\s*[0-9]+ .*" + args.search, l, flags=re.IGNORECASE):
-            if curinfo is not None:
+            if curinfo:
                 place_info = l.split("|")
                 curinfo["places"].append(
                     {
@@ -282,22 +321,60 @@ def get_info(args, code, region, url, border):
     return info
 
 
-def trim_info(args, info):
+def renumber_places(places):
+    """Given an array of places, sorted by score, change the "place" value to match the order"""
+    last_place = 0
+    last_score = 0
+    index = 0
+    for p in places:
+        index += 1
+        if p["points"] != last_score:
+            last_place = index
+        p["place"] = last_place
+        last_score = p["points"]
+
+
+def trim_info(args, info, place_only=False):
     """
     Apply the --search and --maximum-place criteria against the info array.
     """
     for i in info:
         new_places = []
+        if not place_only:
+            if args.competition:
+                ldivision = i["division"].lower()
+                found_competition = False
+                for competition in args.competition:
+                    if ldivision.startswith(COMPETITIONS[competition]):
+                        found_competition = True
+                        break
+                if not found_competition:
+                    # get rid of this one right now
+                    i["places"] = []
+
+            if args.keep_division_if:
+                keep_division = False
+                for j in i["places"]:
+                    for k in args.keep_division_if:
+                        if k.lower() in j["name"].lower() or k.lower() in j["location"].lower():
+                            keep_division = True
+                            break
+                if not keep_division:
+                    # get rid of this one right now
+                    i["places"] = []
+
         for j in i["places"]:
             keep = True
             if j["place"] > args.maximum_place:
                 keep = False
-            if args.search:
+            if args.search and not place_only:
                 if args.search.lower() not in j["name"].lower() and args.search.lower() not in j["location"].lower():
                     keep = False
+
             if keep:
                 new_places.append(j)
         i["places"] = new_places
+
     new_info = []
     for i in info:
         if i["places"]:
@@ -382,7 +459,7 @@ def print_info_by_name(args, info):
 
 
 def print_info_by_division(args, info):
-    """given a structure'd set of standings, print it by division"""
+    """Given a structure'd set of standings, print it by division"""
     for i in info:
         print(f"DIVISION", end="")
         print_omitted(args, "region", f' {i["region"]}')
@@ -396,11 +473,13 @@ def print_info_by_division(args, info):
             print_omitted(args, "name", f' {j["name"]}')
             print_omitted(args, "points", f' {j["points"]}')
             print_omitted(args, "location", f' {j["location"]}')
-        print("")
+            print("")
 
 
 def print_info(args, info):
-    """given a structure'd set of standings, print it appropriately"""
+    """Given a structure'd set of standings, print it appropriately"""
+    if args.dots:
+        print("", file=sys.stderr)
     if args.by_person or args.by_person_with_divisions:
         print_info_by_name(args, info)
     else:
@@ -408,7 +487,7 @@ def print_info(args, info):
 
 
 def print_worlds(args):
-    """print the worlds standings"""
+    """Print the worlds standings"""
     if args.division_code:
         codes = [[f"code={code}", ""] for code in args.division_code]
     else:
@@ -420,10 +499,11 @@ def print_worlds(args):
             print(f"{code[0].split('=')[1]}: {code[1]}")
 
     else:
+        print(f"WORLD STANDINGS")
         if args.search:
-            print(f"WORLD STANDINGS, searching for '{args.search}', maximum place of {args.maximum_place}")
-        else:
-            print(f"WORLD STANDINGS, maximum place of {args.maximum_place}")
+            print(f", searching for '{args.search}'", end="")
+        print(f", maximum place of {args.maximum_place}")
+
         all_info = []
         for code in codes:
             info = get_info(args, code, "WORLDS", f"{WORLDBASE}?{code[0]}", "INFO")
@@ -432,29 +512,108 @@ def print_worlds(args):
         print_info(args, all_info)
 
 
-def print_states(args):
-    """print the state standings"""
+def get_country(state):
+    """Return the appropriate country for a given state"""
+    # https://atamartialarts.com/Scripts/state-standing.bundle.js
+    # Set the country code appropriately based on the state.
+    # Experimentally, it looks like "country=$COUNTRY" is NOT required,
+    # but we'll pass it in anyway.
+    if state in ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]:
+        country = "CA"
+    else:
+        country = "US"
+    return country
+
+
+def print_districts(args, need_nl):
+    """Print the district standings"""
+
+    for district in args.district:
+        if need_nl or district != args.district[0]:
+            print("")
+
+        if args.division_code:
+            codes = [[f"code={code}", ""] for code in args.division_code]
+
+        if args.list_division_codes:
+            if not args.division_code:
+                # The codes are the set of the codes from all of the states.
+                # We don't use the world's set of codes because we also need
+                # any color belt divisions.
+                codes = []
+                codeset = set()
+                for state in DISTRICTS[district]:
+                    country = get_country(state)
+                    ncodes = get_codes(args, f"{STATEBASE}?country={country}&state={state}")
+                    for x in ncodes:
+                        if x[0] not in codeset:
+                            codes.append(x)
+                            codeset.add(x[0])
+
+            print(f"DISTRICT STANDINGS DIVISIONS FOR {district}")
+            for code in codes:
+                print(f"{code[0].split('=')[1]}: {code[1]}")
+
+        else:
+            print(f"DISTRICT STANDINGS FOR {district}", end="")
+            if args.search:
+                print(f", searching for '{args.search}'", end="")
+            print(f", maximum place of {args.maximum_place}")
+
+            temp_maximum_place = args.maximum_place
+            args.maximum_place = 10
+            all_info = []
+            for state in DISTRICTS[district]:
+                country = get_country(state)
+                if not args.division_code:
+                    country = get_country(state)
+                    codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}")
+
+                for code in codes:
+                    info = get_info(
+                        args, code, district, f"{STATEBASE}?country={country}&state={state}&{code[0]}", "CONTENT"
+                    )
+                    info = trim_info(args, info, place_only=True)
+                    for i in info:
+                        # if the corresponding i[division] is in all_info.division,
+                        #     append i[places] to all_info[places]
+                        # otherwise
+                        #     add this entire i to all_info
+                        found = False
+                        for ai in all_info:
+                            if i["division"] == ai["division"]:
+                                found = True
+                                ai["places"] += i["places"]
+                                break
+
+                        if not found:
+                            all_info.append(i)
+
+            args.maximum_place = temp_maximum_place
+            # sort the places arrays
+            for ai in all_info:
+                ai["places"] = sorted(ai["places"], key=lambda k: (-k["points"], sortable_name(k["name"])))
+                renumber_places(ai["places"])
+            all_info = trim_info(args, all_info)
+            print_info(args, all_info)
+
+
+def print_states(args, need_nl):
+    """Print the state standings"""
     # The web site allows for both lower and upper case. Upper case displays better.
     for i in range(len(args.state)):
         args.state[i] = args.state[i].upper()
 
     for state in args.state:
-        if args.worlds or state != args.state[0]:
+        if need_nl or state != args.state[0]:
             print("")
 
-        # https://atamartialarts.com/Scripts/state-standing.bundle.js
-        # Set the country code appropriately based on the state.
-        # Experimentally, it looks like "country=$COUNTRY" is NOT required,
-        # but we'll pass it in anyway.
-        if state in ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]:
-            COUNTRY = "CA"
-        else:
-            COUNTRY = "US"
+        country = get_country(state)
 
         if args.division_code:
             codes = [[f"code={code}", ""] for code in args.division_code]
         else:
-            codes = get_codes(args, f"{STATEBASE}?country={COUNTRY}&state={state}")
+            codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}")
 
         if args.list_division_codes:
             print(f"STATE STANDINGS DIVISIONS FOR {state}")
@@ -462,48 +621,90 @@ def print_states(args):
                 print(f"{code[0].split('=')[1]}: {code[1]}")
 
         else:
+            print(f"STATE STANDINGS FOR {state}")
             if args.search:
-                print(
-                    f"STATE STANDINGS FOR {state}, searching for '{args.search}', maximum place of {args.maximum_place}"
-                )
-            else:
-                print(f"STATE STANDINGS FOR {state}, maximum place of {args.maximum_place}")
+                print(f", searching for '{args.search}'", end="")
+            print(f", maximum place of {args.maximum_place}")
+
             all_info = []
             for code in codes:
-                info = get_info(args, code, state, f"{STATEBASE}?country={COUNTRY}&state={state}&{code[0]}", "CONTENT")
+                info = get_info(args, code, state, f"{STATEBASE}?country={country}&state={state}&{code[0]}", "CONTENT")
                 all_info += info
             all_info = trim_info(args, all_info)
             print_info(args, all_info)
 
 
-def check_omit(args):
-    """check the values of the --omit option"""
-    if args.omit:
-        omit_choices = [
-            "location",
-            "region",
-            "place",
-            "code",
-            "division",
-            "points",
-        ]
-        for omit in args.omit:
-            if omit not in omit_choices:
-                sys.exit(
-                    f"{sys.argv[0]}: error: argument -O/--omit: invalid choice: '{omit}' (choose from "
-                    f"{omit_choices})"
-                )
+def check_option(arglist, opts, choices):
+    """check the values in the arglist against a list of choices"""
+    if arglist:
+        for arg in arglist:
+            if arg not in choices:
+                sys.exit(f"{sys.argv[0]}: error: argument {opts}: invalid choice: '{arg}' (choose from " f"{choices})")
 
 
-def main():
-    """main function"""
+def start_readme(args):
+    """
+    Print the preamble of a readme, and set up capturing the output.
+    If also printing a maximum # of lines, redirect stdout and
+    return the old sys.stdout
+    """
+    print(f"## `{args.generate_readme}`")
+    print(f"`{os.path.basename(sys.argv[0])}", end="")
+    sa1 = [item for sa in SUPPRESSED_ARGUMENTS for item in sa]
+
+    skip = False
+    for i, arg in enumerate(sys.argv[1:]):
+        if skip:
+            skip = False
+        else:
+            if arg in sa1:
+                skip = True
+            else:
+                print(f" {arg}", end="")
+
+    print("`")
+    print("")
+    print("")
+    print("``` shell")
+    if args.maximum_lines:
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        return old_stdout
+    return None
+
+
+def stop_readme(args, old_stdout):
+    """
+    Print the postamble of a readme. If the output had a maximum # of lines,
+    restore stdout and print those lines.
+    """
+    if args.maximum_lines:
+        sio = sys.stdout
+        sys.stdout = old_stdout
+        ml = int(args.maximum_lines)
+        for i, ln in enumerate(sio.getvalue().splitlines()):
+            if i < ml:
+                print(ln)
+            elif i == ml:
+                print(". . .")
+            else:
+                break
+    print("```")
+
+
+def parse_options():
+    """Set up all of the option parsing"""
     parser = argparse.ArgumentParser(description=__doc__, epilog=EPILOG)
     grp_search = parser.add_argument_group("Search Options")
-    grp_search.add_argument("-W", "--worlds", help="Search the world standings", action="store_true")
+    grp_search.add_argument("-W", "--worlds", help="Search the world standings.", action="store_true")
     grp_search.add_argument(
         "-S", "--state", help="State to search. May be specified multiple times.", type=str, action="append"
     )
-    grp_search.add_argument("-s", "--search", help="Pattern to search for in the standings", type=str, default="")
+    grp_search.add_argument(
+        "-d", "--district", help="District to search. May be specified multiple times.", type=str, action="append"
+    )
+    grp_search.add_argument("-s", "--search", help="String to search for in the standings.", type=str, default="")
+    grp_search.add_argument("-k", "--keep-division-if", help="Keep division if this string is found in the standings. May be specified multiple times.", type=str, action="append")
     grp_search.add_argument(
         "-p",
         "--maximum-place",
@@ -515,6 +716,12 @@ def main():
         "-c",
         "--division-code",
         help="Only print this division. May be specified multiple times.",
+        type=str,
+        action="append",
+    )
+    grp_search.add_argument(
+        "--competition",
+        help=f"Only print this competition, one of {COMPETITIONS}. May be specified multiple times.",
         type=str,
         action="append",
     )
@@ -554,6 +761,12 @@ def main():
         action="store_true",
     )
     grp_cache.add_argument(
+        "-T",
+        "--ignore-cache-times",
+        help="Do not timeout any existing cache of the web pages.",
+        action="store_true",
+    )
+    grp_cache.add_argument(
         "-D", "--do-not-write-cache", help="Do not write a cache of the web pages.", action="store_true"
     )
     grp_cache.add_argument(
@@ -568,55 +781,55 @@ def main():
         action="count",
         default=0,
     )
-    suppressed_arguments = [("-R", "--randomize-names"), ("-G", "--generate-readme"), ("-M", "--maximum-lines")]
-    for a, arg in suppressed_arguments:
+    grp_other.add_argument(
+        "--dots",
+        help="Verbose, print some debugging information. May be specified multiple times for higher verbosity levels.",
+        action="count",
+        default=0,
+    )
+    for a, arg in SUPPRESSED_ARGUMENTS:
         grp_other.add_argument(a, arg, help=argparse.SUPPRESS, type=str)
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    check_omit(args)
+
+def main():
+    """main function"""
+    args = parse_options()
+
+    # check the values of the --omit option
+    check_option(args.omit, "-O/--omit", OMIT_CHOICES)
+    # check the values of the --district option
+    if args.district:
+        """Re-capitalize the district names"""
+        for i in range(len(args.district)):
+            args.district[i] = "-".join([x.capitalize() for x in args.district[i].split("-")])
+        check_option(args.district, "-d/--district", DISTRICTS.keys())
+    # check the values of the --competition option
+    check_option(args.competition, "--competiton", COMPETITIONS.keys())
+
     if args.generate_readme:
-        print(f"## `{args.generate_readme}`")
-        print(f"`{os.path.basename(sys.argv[0])}", end="")
-        sa1 = [item for sa in suppressed_arguments for item in sa]
-        for arg in sys.argv[1:]:
-            if arg not in sa1:
-                print(f" {arg}", end="")
-        print("`")
-        print("")
-        print("")
-        print("``` shell")
-        if args.maximum_lines:
-            old_stdout = sys.stdout
-            sys.stdout = io.StringIO()
+        old_stdout = start_readme(args)
 
     if args.clean_cache:
         clean_cache(args)
 
-    if not args.worlds and not args.state:
+    if not args.worlds and not args.district and not args.state:
         args.worlds = True
 
     try:
         if args.worlds:
             print_worlds(args)
 
+        if args.district:
+            print_districts(args, args.worlds)
+
         if args.state:
-            print_states(args)
+            print_states(args, args.worlds or args.district)
     except BrokenPipeError:
         pass
 
     if args.generate_readme:
-        if args.maximum_lines:
-            sio = sys.stdout
-            sys.stdout = old_stdout
-            ml = int(args.maximum_lines)
-            for i, ln in enumerate(sio.getvalue().splitlines()):
-                if i < ml:
-                    print(ln)
-                elif i == ml:
-                    print(". . .")
-                else:
-                    break
-        print("```")
+        stop_readme(args, old_stdout)
 
 
 if __name__ == "__main__":

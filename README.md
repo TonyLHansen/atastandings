@@ -35,6 +35,12 @@ This can be combined with `--state STATE-ABBREV` to get the division codes speci
 (Not all divisions have competitors in each state or province.
 Also, color belt divisions will not show in the world standings list.)
 
+## Searching
+
+There are two types of searching available.
+* `--search string`, `-s string` -- Only print entries that have this string in either the person's name OR the school location. (Case is ignored.)
+* `--keep-division-if string`, `-k string` -- Only print a division if the string is found in any of the people's names or school locations in the division.
+
 ## Place Standings
 
 The default for `atastandings` is to print all current place standings in each division.
@@ -305,6 +311,44 @@ DIVISION WORLDS W23A Combat Weapons Women 2nd, 3rd Degree Black Belt 18 - 29 Yea
  1 Aneenanec Nostraltircise 64 HIGHLAND, IN 1 Scelerisqueesnecuts Convallismorbim 64 SULPHUR SPRINGS, TX 3 Naotquenauctor Adpiubsgetee 62 JONESBORO, AR 4 Sociosquhabitasse Raivdagmobri 53 MISHAWAKA, IN 5 Tepmuslibero Parturientveihcual 39 BARTLETT, TN 6 Tacitipuursq Feamsfusrsuu 38 ROANOKE, TX 7 Massaraseetn Hnedrreithatits 36 DES PERES, MO 7 Amseujstol Odlropatrurinet 36 LAKEWOOD, CO 7 Luctusnisl Isdn 36 ALLEN, TX 10 Usjtlosollicitudin Smecondimentum 35 LAVEEN, AZ
 . . .
 ```
+
+## `Show Rockies Districts Students from Aurora`
+`atastandings --district Rockies --keep-division-if aurora`
+Show all divisions in the Rockies district that have a student from Aurora in the division.
+
+``` shell
+DISTRICT STANDINGS FOR Rockies, maximum place of 99
+DIVISION Rockies B01C Weapons Boys 1st Degree Black Belt 11 - 12 Years Old
+ Place Name Pts Location 
+ 1 Ornareulnlna Ocnsetcetruolils 46 MANCHESTER, MO
+ 2 Estulefiedn Accumsanmobri 42 DES PERES, MO
+ 3 Fremenutmelo Inhbnqiusqeu 32 JACKSON, MO
+ 4 Xedis Felisda 14 GLADSTONE, MO
+ 5 Diusnatoque Onugelulacmorepr 11 O&#39;FALLON, MO
+ 6 Racuanascetur Moelsteirootrtt 7 LAKEWOOD, CO
+ 6 Crussutcaiit Osureeveilt 7 EUREKA, MO
+. . .
+```
+
+## `Show Rockies Districts Forms Competition with Students from Aurora`
+`atastandings --district Rockies --keep-division-if aurora --competition forms`
+
+Show all forms divisions in the Rockies district that have a student from Aurora in the division.
+
+``` shell
+DISTRICT STANDINGS FOR Rockies, maximum place of 99
+DIVISION Rockies BCOA Forms Boys Color Belt 1 - 8 Years Old
+ Place Name Pts Location 
+ 1 Crasispum Priontirstqiuet 40 O&#39;FALLON, MO
+ 2 Lacinialitora Blnaditcactiti 30 JACKSON, MO
+ 3 Lualcmoperrracua Inetgeriblieorl 29 MANCHESTER, MO
+ 4 Rootrttnnuc Eichulavulputate 14 FORT COLLINS, CO
+ 5 Tepmuselo Dsiante 10 JEFFERSON CITY, MO
+ 6 Ctumoorl Fcailsiipretium 8 CHESTERFIELD, MO
+ 7 Eolbbiendmu Ondmientmuatits 6 LEES SUMMIT, MO
+. . .
+```
+
 
 # Installation
 This program was written using python3, so you will need a python3 environment to run it.
