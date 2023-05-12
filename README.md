@@ -339,7 +339,7 @@ Show all forms divisions in the Rockies district that have a student from Aurora
 DISTRICT STANDINGS FOR Rockies, maximum place of 99
 DIVISION Rockies BCOA Forms Boys Color Belt 1 - 8 Years Old
  Place Name Pts Location 
- 1 Crasispum Priontirstqiuet 40 O&#39;FALLON, MO
+ 1 Crasispum Priontirstqiuet 40 O'FALLON, MO
  2 Lacinialitora Blnaditcactiti 30 JACKSON, MO
  3 Lualcmoperrracua Inetgeriblieorl 29 MANCHESTER, MO
  4 Rootrttnnuc Eichulavulputate 14 FORT COLLINS, CO

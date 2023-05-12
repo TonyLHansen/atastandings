@@ -315,7 +315,7 @@ def get_info(args, code, region, url, border):
                         "place": int(place_info[0]),
                         "name": fix_html(get_random_name(args, place_info[1].strip())),
                         "points": int(place_info[2].strip()),
-                        "location": place_info[3].strip(),
+                        "location": fix_html(place_info[3].strip()),
                     }
                 )
     return info
