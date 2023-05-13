@@ -466,8 +466,13 @@ def print_info_by_division(args, info):
         print_omitted(args, "code", f' {i["code"]}')
         print_omitted(args, "division", f' {i["division"]}')
         print("")
-        for j in i["other_header"]:
-            print(j)
+
+        print_omitted(args, "place", " Place")
+        print_omitted(args, "name", " Name")
+        print_omitted(args, "points", " Pts")
+        print_omitted(args, "location", " Location")
+        print("")
+
         for j in i["places"]:
             print_omitted(args, "place", f' {j["place"]}')
             print_omitted(args, "name", f' {j["name"]}')
