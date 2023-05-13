@@ -10,14 +10,18 @@ All `atastandings` options are specified using two hyphens (`--`) and the option
 possibly followed by an argument such as a search string or a state/province abbreviation.
 There are also short versions of most of the options that are a single hyphen and a single lettter.
 
-## Worlds and State Standings
+## Worlds, District and State Standings
 The default for `atastandings` is to search the world standings.
-You can instead ask it to search one or more state standings.
+You can instead ask it to search one or more state or district standings.
 
-* `--worlds`, `-W` -- search the world standings
+* `--worlds`, `-W` -- search the world standings.
+* `--district name`, `-d name` -- search the given district.
+This may be specified multiple times.
 * `--state ABBREV`, `-S ABBREV` -- search the given state or province, using the two character state or province postoffice code.
+This may be specified multiple times.
 
 For example, both `atastandings` and  `atastandings --worlds` will search the world standings.
+`atastandings --district northeast` will search the Northeast district.
 `atastandings --state pa --state ca` will search the state standings for Pennsylvania and California.
 `atastandings --worlds --state ca` will search both the world stands and the state standings for California.
 
@@ -30,8 +34,21 @@ For example, the division code for **1st Degree Black Belt Age 9 - 10** is *B01B
 To find out what the division codes are, you can get a list:
 
 * `--list-division-codes`, `-l` -- list all of the division codes.
+This  can be combined with  `--district name`, or `--state STATE-ABBREV` to get the division codes specific to a state/province.
 
-This can be combined with `--state STATE-ABBREV` to get the division codes specific to a state/province.
+* `--division-code code`, `-c code` -- Restrict the output to the specified diision code.
+This may be specified multiple times.
+* `--competition competition` -- Only print this competition, one of
+`forms`,
+`weapons`,
+`combat-weapons`,
+`sparring`,
+`creative-forms`,
+`creative-weapons`,
+`x-treme-forms`,
+or `x-treme-weapons`.
+May be specified multiple times.
+
 (Not all divisions have competitors in each state or province.
 Also, color belt divisions will not show in the world standings list.)
 
@@ -59,13 +76,14 @@ The names are printed in order, sorted by last name.
 (Suffixes like "Jr." and prefixes like "van" are taken into consideration in the sorting process.)
 
 * `--by-person`, `-b` -- Print the names and location of each individual.
-* `--by-person-with-division`, `-B` -- Print the names and location of each individual, followed by a list of their divisions.
+* `--by-person-with-divisions`, `-B` -- Print the names and location of each individual, followed by a list of their divisions.
 
 ## Omitting Information
 Normally, `atastandings` will print all information, including such things as the location, place and points.
 You can choose to omit pieces of information.
 
-* `--omit item`, `-O item` -- Omit information from the printouts, where `item` is one of `location`, `place`, `points`, `region`, `division` or `code`.
+* `--omit item`, `-O item` -- Omit information from the printouts,
+where `item` is one of `location`, `place`, `points`, `region`, `division` or `code`.
 The `region` is either the world "WORLDS" or the state or province name.
 The code is the division code.
 This may be specified multiple times.
@@ -82,12 +100,15 @@ It defaults to an os-specific temp directory.
 All cache files are named `atastandings.` followed by a long string of characters representing the web file being referenced.
 * `--ignore-existing-cache`, `-I` -- Sometimes you might want the existing cache to be ignored, but still created.
 Doing this will give you slower response times.
+* `--ignore-cache-times`, `-T` -- Sometimes you want to ignore that the fact that the cache file is older than 24 hours.
 * `--do-not-write-cache`, `-D` -- Sometimes you might want the cache files to not be written.
 For example, you can use use this option if there are problems on your system with the cache directory.
 Doing this will give you slower response times when you run the program again.
 
 
-## Getting Help on the options
+## Getting Help and Miscellaneous Other Options
+
+* `--dots`, `-.` -- Dots will be printed for each file that is being retrieved from the web or the cache.
 
 Finally, you can ask for help on what options are available:
 
