@@ -15,7 +15,15 @@ The default for `atastandings` is to search the world standings.
 You can instead ask it to search one or more state or district standings.
 
 * `--worlds`, `-W` -- search the world standings.
-* `--district name`, `-d name` -- search the given district.
+* `--district name`, `-d name` -- search the given district, one of
+`Mid-America`,
+`Midwest`,
+`Northeast`,
+`Northwest`,
+`Rockies`,
+`Southeast`,
+`South`,
+or `Southwest`.
 This may be specified multiple times.
 * `--state ABBREV`, `-S ABBREV` -- search the given state or province, using the two character state or province postoffice code.
 This may be specified multiple times.
