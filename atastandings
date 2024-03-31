@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-""" Search the 2023 ATA World, District and State/Province standings """
+""" Search the current ATA World, District and State/Province standings and print the results. """
 
-# See the LICENSE file for the license to use and modify this program.
+# SPDX-License-Identifier: MIT
+# pylint: disable=too-many-lines
 
 import argparse
 import glob
@@ -27,14 +28,7 @@ RANDOM_WORDS = []
 USED_WORDS = []
 RANDOM_NAME_MAP = {}
 
-OMIT_CHOICES = [
-    "location",
-    "region",
-    "place",
-    "code",
-    "division",
-    "points",
-]
+OMIT_CHOICES = ["location", "region", "place", "code", "division", "points"]
 DISTRICTS = {
     "Northeast": ["va", "wv", "md", "pa", "de", "nj", "ny", "ct", "ri", "ma", "vt", "nh", "me", "dc"],
     "Southeast": ["tn", "nc", "sc", "ga", "fl", "al", "ms"],
@@ -57,7 +51,16 @@ COMPETITIONS = {
     "x-treme-weapons": "x-treme weapons",
 }
 
-SUPPRESSED_ARGUMENTS = [("-R", "--randomize-names"), ("-G", "--generate-readme"), ("-M", "--maximum-lines")]
+SUPPRESSED_ARGUMENTS = [
+    ("-R", "--randomize-names", True),
+    ("-G", "--generate-readme", True),
+    ("-2", "--readme-explanation", True),
+    ("-M", "--maximum-lines", True),
+    ("-X", "--print-readme-heading", False),
+    ("-Y", "--print-readme-trailer", False),
+    ("-o", "--output", True),
+]
+
 
 def get_next_random_word():
     """
@@ -504,7 +507,7 @@ def print_worlds(args):
             print(f"{code[0].split('=')[1]}: {code[1]}")
 
     else:
-        print(f"WORLD STANDINGS")
+        print(f"WORLD STANDINGS", end="")
         if args.search:
             print(f", searching for '{args.search}'", end="")
         print(f", maximum place of {args.maximum_place}")
@@ -626,7 +629,7 @@ def print_states(args, need_nl):
                 print(f"{code[0].split('=')[1]}: {code[1]}")
 
         else:
-            print(f"STATE STANDINGS FOR {state}")
+            print(f"STATE STANDINGS FOR {state}", end="")
             if args.search:
                 print(f", searching for '{args.search}'", end="")
             print(f", maximum place of {args.maximum_place}")
@@ -647,9 +650,184 @@ def check_option(arglist, opts, choices):
                 sys.exit(f"{sys.argv[0]}: error: argument {opts}: invalid choice: '{arg}' (choose from " f"{choices})")
 
 
+def print_readme_heading():
+    """Print the opening of the readme file."""
+    # pylint: disable=line-too-long,bad-continuation
+    print(
+        """
+	# ATA (American Taekwondo Association) World and State Standings Printer
+
+	The American Taekwondo Association's tournament series has its results online.
+	However, the user interface is oriented towards looking at a division at a time
+	and has no provisions for searching based on a person's name or school.
+
+	# atastandings Options
+
+	All `atastandings` options are specified using two hyphens (`--`) and the option name,
+	possibly followed by an argument such as a search string or a state/province abbreviation.
+	There are also short versions of most of the options that are a single hyphen and a single lettter.
+
+	## Worlds, District and State Standings
+	The default for `atastandings` is to search the world standings.
+	You can instead ask it to search one or more state or district standings.
+
+	* `--worlds`, `-W` -- search the world standings.
+	* `--district name`, `-d name` -- search the given district, one of
+	`Mid-America`,
+	`Midwest`,
+	`Northeast`,
+	`Northwest`,
+	`Rockies`,
+	`Southeast`,
+	`South`,
+	or `Southwest`.
+	This may be specified multiple times.
+	* `--state ABBREV`, `-S ABBREV` -- search the given state or province, using the two character state or province postoffice code.
+	This may be specified multiple times.
+
+	For example, both `atastandings` and  `atastandings --worlds` will search the world standings.
+	`atastandings --district northeast` will search the Northeast district.
+	`atastandings --state pa --state ca` will search the state standings for Pennsylvania and California.
+	`atastandings --worlds --state ca` will search both the world stands and the state standings for California.
+
+	## Division Control
+
+	The default for `atastandings` is to print information for *all* divisions.
+	Alternatively, you can restrict your output to specific division codes.
+	For example, the division code for **1st Degree Black Belt Age 9 - 10** is *B01B*.
+
+	To find out what the division codes are, you can get a list:
+
+	* `--list-division-codes`, `-l` -- list all of the division codes.
+	This  can be combined with  `--district name`, or `--state STATE-ABBREV` to get the division codes specific to a state/province.
+
+	* `--division-code code`, `-c code` -- Restrict the output to the specified diision code.
+	This may be specified multiple times.
+	* `--competition competition` -- Only print this competition, one of
+	`forms`,
+	`weapons`,
+	`combat-weapons`,
+	`sparring`,
+	`creative-forms`,
+	`creative-weapons`,
+	`x-treme-forms`,
+	or `x-treme-weapons`.
+	May be specified multiple times.
+
+	(Not all divisions have competitors in each state or province.
+	Also, color belt divisions will not show in the world standings list.)
+
+	## Searching
+
+	There are two types of searching available.
+	* `--search string`, `-s string` -- Only print entries that have this string in either the person's name OR the school location. (Case is ignored.)
+	* `--keep-division-if string`, `-k string` -- Only print a division if the string is found in any of the people's names or school locations in the division.
+
+	## Place Standings
+
+	The default for `atastandings` is to print all current place standings in each division.
+	The place standings for each state on the web site show the top 10 people, but you might only
+	be interested in who the first place leaders are.
+
+	* `--maximum-place MAXIMUM-PLACE`, `-p MAXIMUM-PLACE` -- limit the output to only those whose place is less than or equal to the specified maximum place.
+
+	For example, `--maximum-place 1` would print only the first place leaders,
+	and `--maximum-place 4` will print only the top four contenders.
+
+	## By Person Printing (Champion Status)
+	Normally, `atastandings` prints the results arranged by division.
+	You might prefer the printout to be arranged by an individual's name instead, with or without the division information.
+	The names are printed in order, sorted by last name.
+	(Suffixes like "Jr." and prefixes like "van" are taken into consideration in the sorting process.)
+
+	* `--by-person`, `-b` -- Print the names and location of each individual.
+	* `--by-person-with-divisions`, `-B` -- Print the names and location of each individual, followed by a list of their divisions.
+
+	## Omitting Information
+	Normally, `atastandings` will print all information, including such things as the location, place and points.
+	You can choose to omit pieces of information.
+
+	* `--omit item`, `-O item` -- Omit information from the printouts,
+	where `item` is one of `location`, `place`, `points`, `region`, `division` or `code`.
+	The `region` is either the world "WORLDS" or the state or province name.
+	The code is the division code.
+	This may be specified multiple times.
+
+	## Web Cache
+	By default, `atastandings` will maintain a cache of the web sites, so that you can have faster response times
+	when you run the program multiple times.
+	Most of the time you can ignore that the cache is being used, as cache files older than 24 hours are automatically ignored.
+	However power users might want additional controls.
+
+	* `--cache-directory PATH`, `-C PATH` -- This will set the cache directory to the given path.
+	It defaults to an os-specific temp directory.
+	* `--clean-cache` -- Sometimes you might wish to clean up all of the cached files.
+	All cache files are named `atastandings.` followed by a long string of characters representing the web file being referenced.
+	* `--ignore-existing-cache`, `-I` -- Sometimes you might want the existing cache to be ignored, but still created.
+	Doing this will give you slower response times.
+	* `--ignore-cache-times`, `-T` -- Sometimes you want to ignore that the fact that the cache file is older than 24 hours.
+	* `--do-not-write-cache`, `-D` -- Sometimes you might want the cache files to not be written.
+	For example, you can use use this option if there are problems on your system with the cache directory.
+	Doing this will give you slower response times when you run the program again.
+
+
+	## Getting Help and Miscellaneous Other Options
+
+	* `--dots`, `-.` -- Dots will be printed for each file that is being retrieved from the web or the cache.
+
+	Finally, you can ask for help on what options are available:
+
+	* `--help`, `-h` -- Show a help message listing all of the options and variations.
+
+
+	# Sample Use Examples
+
+	The following examples show some of the ways that the various options can be combined together.
+	All sample output uses fictitious names, and only shows the first 10 lines of the output.
+
+	""".replace(
+            "\t", ""
+        )[
+            1:
+        ]
+    )
+    # pylint: enable=line-too-long,bad-continuation
+
+
+def print_readme_trailer():
+    """Print the trailer of the readme file."""
+    # pylint: disable=line-too-long,bad-continuation
+    print(
+        """
+# Installation
+This program was written using python3, so you will need a python3 environment to run it.
+You will also need the python `requests` library.
+(In my opinion, if you have a Windows system, the easiest way to install a full python3
+environment is to install the MicroSoft WSL2 infrastructure, which will include python3
+and many other tools.)
+
+If you do not have the `requests` library, you will need to run a command such as this to load it:
+``` shell
+pip3 install requests
+```
+
+Put the atastandings script somewhere in your path, make sure it is executable
+(in Linux and WSL, `chmod a+x atastandings`) and run it with the options you desire.
+Or you can invoke the script directly with python3, as in `python3 atastandings` followed
+by the options you desire.
+You might need to execute it as `./atastandings` followed by the options you desire.
+	""".replace(
+            "\t", ""
+        )[
+            1:
+        ]
+    )
+    # pylint: enable=line-too-long,bad-continuation
+
+
 def start_readme(args):
     """
-    Print the preamble of a readme, and set up capturing the output.
+    Print the preamble of a readme segment, and set up capturing the output.
     If also printing a maximum # of lines, redirect stdout and
     return the old sys.stdout
     """
@@ -658,17 +836,20 @@ def start_readme(args):
     sa1 = [item for sa in SUPPRESSED_ARGUMENTS for item in sa]
 
     skip = False
-    for i, arg in enumerate(sys.argv[1:]):
+    for arg in sys.argv[1:]:
         if skip:
             skip = False
+        elif arg in sa1:
+            skip = True
+        elif " " in arg:
+            print(f' "{arg}"', end="")
         else:
-            if arg in sa1:
-                skip = True
-            else:
-                print(f" {arg}", end="")
+            print(f" {arg}", end="")
 
     print("`")
-    print("")
+    if args.readme_explanation:
+        print("")
+        print(args.readme_explanation)
     print("")
     print("``` shell")
     if args.maximum_lines:
@@ -695,6 +876,7 @@ def stop_readme(args, old_stdout):
             else:
                 break
     print("```")
+    print("")
 
 
 def parse_options():
@@ -709,7 +891,13 @@ def parse_options():
         "-d", "--district", help="District to search. May be specified multiple times.", type=str, action="append"
     )
     grp_search.add_argument("-s", "--search", help="String to search for in the standings.", type=str, default="")
-    grp_search.add_argument("-k", "--keep-division-if", help="Keep division if this string is found in the standings. May be specified multiple times.", type=str, action="append")
+    grp_search.add_argument(
+        "-k",
+        "--keep-division-if",
+        help="Keep division if this string is found in the standings. May be specified multiple times.",
+        type=str,
+        action="append",
+    )
     grp_search.add_argument(
         "-p",
         "--maximum-place",
@@ -732,18 +920,8 @@ def parse_options():
     )
 
     grp_output = parser.add_argument_group("Output Options")
-    grp_output.add_argument(
-        "-b",
-        "--by-person",
-        help="Print the standings by name",
-        action="store_true",
-    )
-    grp_output.add_argument(
-        "-B",
-        "--by-person-with-divisions",
-        help="Print the standings by name",
-        action="store_true",
-    )
+    grp_output.add_argument("-b", "--by-person", help="Print the standings by name", action="store_true")
+    grp_output.add_argument("-B", "--by-person-with-divisions", help="Print the standings by name", action="store_true")
     grp_output.add_argument(
         "-O", "--omit", help="Item to skip printing. May be specified multiple times.", type=str, action="append"
     )
@@ -766,10 +944,7 @@ def parse_options():
         action="store_true",
     )
     grp_cache.add_argument(
-        "-T",
-        "--ignore-cache-times",
-        help="Do not timeout any existing cache of the web pages.",
-        action="store_true",
+        "-T", "--ignore-cache-times", help="Do not timeout any existing cache of the web pages.", action="store_true"
     )
     grp_cache.add_argument(
         "-D", "--do-not-write-cache", help="Do not write a cache of the web pages.", action="store_true"
@@ -786,14 +961,13 @@ def parse_options():
         action="count",
         default=0,
     )
-    grp_other.add_argument(
-        "--dots",
-        help="Verbose, print some debugging information. May be specified multiple times for higher verbosity levels.",
-        action="count",
-        default=0,
-    )
-    for a, arg in SUPPRESSED_ARGUMENTS:
-        grp_other.add_argument(a, arg, help=argparse.SUPPRESS, type=str)
+    grp_other.add_argument("--dots", help="Print a dot for each web page accessed.", action="store_true")
+
+    for a, arg, has_option in SUPPRESSED_ARGUMENTS:
+        if has_option:
+            grp_other.add_argument(a, arg, help=argparse.SUPPRESS, type=str)
+        else:
+            grp_other.add_argument(a, arg, help=argparse.SUPPRESS, action="store_true")
     return parser.parse_args()
 
 
@@ -805,12 +979,23 @@ def main():
     check_option(args.omit, "-O/--omit", OMIT_CHOICES)
     # check the values of the --district option
     if args.district:
-        """Re-capitalize the district names"""
+        # Re-capitalize the district names
         for i in range(len(args.district)):
             args.district[i] = "-".join([x.capitalize() for x in args.district[i].split("-")])
         check_option(args.district, "-d/--district", DISTRICTS.keys())
     # check the values of the --competition option
     check_option(args.competition, "--competiton", COMPETITIONS.keys())
+
+    if args.output:
+        sys.stdout = open(args.output, "a")
+
+    if args.print_readme_heading:
+        print_readme_heading()
+        sys.exit()
+
+    if args.print_readme_trailer:
+        print_readme_trailer()
+        sys.exit()
 
     if args.generate_readme:
         old_stdout = start_readme(args)
