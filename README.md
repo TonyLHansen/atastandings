@@ -16,14 +16,14 @@ You can instead ask it to search one or more state or district standings.
 
 * `--worlds`, `-W` -- search the world standings.
 * `--district name`, `-d name` -- search the given district, one of
-`Mid-America`,
-`Midwest`,
-`Northeast`,
-`Northwest`,
-`Rockies`,
-`Southeast`,
-`South`,
-or `Southwest`.
+    `Mid-America`,
+    `Midwest`,
+    `Northeast`,
+    `Northwest`,
+    `Rockies`,
+    `Southeast`,
+    `South`,
+    or `Southwest`.
 This may be specified multiple times.
 * `--state ABBREV`, `-S ABBREV` -- search the given state or province, using the two character state or province postoffice code.
 This may be specified multiple times.
@@ -47,14 +47,14 @@ This  can be combined with  `--district name`, or `--state STATE-ABBREV` to get 
 * `--division-code code`, `-c code` -- Restrict the output to the specified diision code.
 This may be specified multiple times.
 * `--competition competition` -- Only print this competition, one of
-`forms`,
-`weapons`,
-`combat-weapons`,
-`sparring`,
-`creative-forms`,
-`creative-weapons`,
-`x-treme-forms`,
-or `x-treme-weapons`.
+    `forms`,
+    `weapons`,
+    `combat-weapons`,
+    `sparring`,
+    `creative-forms`,
+    `creative-weapons`,
+    `x-treme-forms`,
+    or `x-treme-weapons`.
 May be specified multiple times.
 
 (Not all divisions have competitors in each state or province.
@@ -121,6 +121,24 @@ Doing this will give you slower response times when you run the program again.
 Finally, you can ask for help on what options are available:
 
 * `--help`, `-h` -- Show a help message listing all of the options and variations.
+* `--extended-help` -- Show the preamble of the README
+
+## Configuration File
+Some of the options shown above can be specified in a configuration file.
+This should be a file named .atastandings.ini that lives in the same
+directory/folder as the atastandings program itself or the user's
+HOME/HOMEPATH directory/folder.
+It consists of lines that have the configuration option, a colon (`:`) and a value.
+Use `#` to start a comment.
+Use `true` and `false` for boolean options. The options that can be specified in
+the configuration file and their default values are:
+
+    `by-person: false`
+    `by-person-with-divisions: false`
+    `omit: "string"`
+    `list-division-codes: false`
+    `cache-directory: "string"`
+    `dots: false`
 
 
 # Sample Use Examples
@@ -138,13 +156,13 @@ Show all students from Aurora, Colorado in the world standings.
 WORLD STANDINGS, searching for 'aurora, co', maximum place of 99
 DIVISION WORLDS B123A Creative Weapons Boys 1st-3rd Creative Weapons Black Belt 1 - 8 Years Old
  Place Name Pts Location
- 9 Issuseneuctse Rsiituqetridamd 15 AURORA, CO
+ 9 Racuapaltae Imperdietprimis 15 AURORA, CO
 DIVISION WORLDS M01B Combat Weapons Men 1st Degree Black Belt 30 - 39 Years Old
  Place Name Pts Location
- 10 Ccaumsanisd Oiocsquonn 13 AURORA, CO
+ 10 Conubiance Aeneanpluvinra 13 AURORA, CO
 DIVISION WORLDS MBCB Forms Men Special Abilities Black Belt-Cognitive 30 - 99 Years Old
  Place Name Pts Location
- 2 Cuonbaicvieltv Feugiategte 21 AURORA, CO
+ 2 Uisomdeichula Doolraprtruietn 21 AURORA, CO
 . . .
 ```
 
@@ -157,13 +175,13 @@ Show all students from Aurora, Colorado in either the worlds or Colorado state s
 WORLD STANDINGS, searching for 'aurora', maximum place of 99
 DIVISION WORLDS B123A Creative Weapons Boys 1st-3rd Creative Weapons Black Belt 1 - 8 Years Old
  Place Name Pts Location
- 9 Duiscnoubai Ictmutvv 15 AURORA, CO
+ 9 Consecteturnatoque Onvlaliscssucipti 15 AURORA, CO
 DIVISION WORLDS M01B Combat Weapons Men 1st Degree Black Belt 30 - 39 Years Old
  Place Name Pts Location
- 10 Vlupuattevidiuclusr Aspinetellus 13 AURORA, CO
+ 10 Lcetsuta Tvvrabitucr 13 AURORA, CO
 DIVISION WORLDS MBCB Forms Men Special Abilities Black Belt-Cognitive 30 - 99 Years Old
  Place Name Pts Location
- 2 Iaculissgtiist Fiaclsisifmauris 21 AURORA, CO
+ 2 Uallconvallis Bbiendmuiginssmi 21 AURORA, CO
 . . .
 ```
 
@@ -176,10 +194,10 @@ Show all students from Aurora, Colorado leading the competition in either the wo
 WORLD STANDINGS, searching for 'aurora', maximum place of 1
 DIVISION WORLDS MBAB Creative Forms Men Special Abilities Creative Forms Black Belt-Autistic 30 - 99 Years Old
  Place Name Pts Location
- 1 Dignissimaimdi Ecusm 5 AURORA, CO
+ 1 Maruisaimdi Estusiodm 5 AURORA, CO
 DIVISION WORLDS MBAB X-Treme Forms Men Special Abilities X-Treme Forms Black Belt-Autistic 30 - 99 Years Old
  Place Name Pts Location
- 1 Loremad Morbimridiculus 5 AURORA, CO
+ 1 Ctusaliquet Moelsteirootrtt 5 AURORA, CO
 
 STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 1
 DIVISION CO B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
@@ -195,13 +213,13 @@ After the results are finalized, show all state champions from Aurora, Colorado.
 STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 1
 DIVISION CO B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location
- 1 Esitbuulmulalmcoprer Loitarvoluttpa Tirstqiuetabhitassea 25 AURORA, CO
+ 1 Eleifendidi Rootrttlualcmoperr Lemenetumvitae 25 AURORA, CO
 DIVISION CO B01B Sparring Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location
- 1 Niteima Scelerisquequis 20 AURORA, CO
+ 1 Vsetibluumpurus Quamlbierol 20 AURORA, CO
 DIVISION CO B01C Forms Boys 1st Degree Black Belt 11 - 12 Years Old
  Place Name Pts Location
- 1 Idmeta Ortittorprnrae 13 AURORA, CO
+ 1 Tcaiitrpimsi Enaitbusproci 13 AURORA, CO
 . . .
 ```
 
@@ -212,15 +230,15 @@ After the results are finalized, show all state champions from Aurora, Colorado,
 
 ``` shell
 STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 1
-Insindui Aatut | 1 M01B Forms Men 1st Degree Black Belt 30 - 39 Years Old
-Placetraoprtap Aliquamaugue | 1 G01B Sparring Girls 1st Degree Black Belt 9 - 10 Years Old
-Vlupuattevpellentsequep Amseaptent | 1 GCOB Combat Weapons Girls Color Belt 9 - 10 Years Old
-Eclriesquevelit Amuquisque | 1 B23E Sparring Boys 2nd, 3rd Degree Black Belt 15 - 17 Years Old
-Consecteturullamcorper Aneeanamna | 1 MCOB Sparring Men Color Belt 30 - 39 Years Old
-Lndaictinecptso Aolreetpharetra | 1 MCOC Sparring Men Color Belt 40 - 49 Years Old
-Duisaspine Aqliuteaquam | 1 GCOC Sparring Girls Color Belt 11 - 12 Years Old
-Crussuvneentaisv Asasevstiublumv | 1 MCOB Combat Weapons Men Color Belt 30 - 39 Years Old
-Ahcets Asectruunllan | 1 B01C Sparring Boys 1st Degree Black Belt 11 - 12 Years Old
+Nbihevstiublumv Adipiscingaspine | 1 B01B Sparring Boys 1st Degree Black Belt 9 - 10 Years Old
+Jsutolodlro Adpiubsnnuc | 1 M01B Sparring Men 1st Degree Black Belt 30 - 39 Years Old
+Bibenmdumgansi Aidpicsignprion | 1 GCOE Sparring Girls Color Belt 15 - 17 Years Old
+Hrnoucsrrlualcmoperr Arcuonmtes | 1 B23C Creative Forms Boys 2nd, 3rd Degree Creative Forms Black Belt 11 - 12 Years Old
+Itnciudntfuacibsu Arcuphasellus | 1 M45B Combat Weapons Men 4th, 5th Degree Black Belt 30 - 39 Years Old
+Classspaiens Aspinetlelsu | 1 W45C Sparring Women 4th, 5th Degree Black Belt 40 - 49 Years Old
+Nammattis Crassneecuts Auguenaeenaa | 1 B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
+Egtecrussu Cacumasnatits | 1 M23C Sparring Men 2nd, 3rd Degree Black Belt 40 - 49 Years Old
+Eiusmdopatrurinet Caiianeuismod | 1 G01B Sparring Girls 1st Degree Black Belt 9 - 10 Years Old
 . . .
 ```
 
@@ -231,15 +249,15 @@ After the results are finalized, show all state champions from Aurora, Colorado,
 
 ``` shell
 STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 1
-Esnecutspulvinar Abaittneremntmu
-Rascvestibulum Aliquametsu
-Ltecsusollicitudin Aneeanatmepsu
-Prionafciilssi Anotuqennsed
-Rutrummaximus Aphsleusllcaus
-Venenatistima Atciitre
-Turpismanga Blanditonvlalisc
-Congueaidpicsign Calsscfeugiat
-Himenoaeshpatrurinet Condimentumsmepre
+Aimdipluvinra Adfames
+Neaibtupsrpetuim Afciilssietra
+Mrobimsce Aidpicsignombir
+Ctumdoioo Aqliuteahrnoucsrr
+Rociotrtro Blieorlntierdum
+Enaitbuspvieltv Commodosoicosuq
+Enquenproin Diustorquent
+Itnciudntlutriecs Dnigissmidnma
+Susquis Donecpharetra
 . . .
 ```
 
@@ -252,13 +270,13 @@ After the results are finalized, show all students from Aurora, Colorado who are
 STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 10
 DIVISION CO B01B Forms Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location
- 3 Mxaimsuelementum Cuonbaicsepmer 1 AURORA, CO
+ 3 Proinets Pellentesquenisi 1 AURORA, CO
 DIVISION CO B01B Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location
- 3 Abiatntiamd Rabitucrmaceensa 3 AURORA, CO
+ 3 Litorafusce Ffciiurtuid 3 AURORA, CO
 DIVISION CO B01B Combat Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location
- 1 Proinaneena Fremenutmblandit Porttitorutlriceis 25 AURORA, CO
+ 1 Commodorviadha Magnisce Crascounbiac 25 AURORA, CO
 . . .
 ```
 
@@ -269,15 +287,15 @@ After the results are finalized, show all students from Aurora, Colorado, sorted
 
 ``` shell
 STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 10
-Firnglilafrupis Abhitasseabbiendmu | 2 BCOA Weapons Boys Color Belt 1 - 8 Years Old
-Vloutaptotrtro Accumasnpatrurinet | 1 G01D Creative Forms Girls 1st Degree Creative Forms Black Belt 13 - 14 Years Old
-Eteitncdiutn Accumsanblandit | 4 G01C Sparring Girls 1st Degree Black Belt 11 - 12 Years Old
-Aleusadamsuscipit Acsuinhbn | 2 B01D Sparring Boys 1st Degree Black Belt 13 - 14 Years Old
-Tirstqiuetduis Afciilssiactiti | 4 BCOB Weapons Boys Color Belt 9 - 10 Years Old
-Vuplutaetcommodo Aicuilssociosqu | 3 BCOA Weapons Boys Color Belt 1 - 8 Years Old
-Ullamcorpereue Ailcisiulal | 2 BCOB Sparring Boys Color Belt 9 - 10 Years Old
-Nceudi Ailquteeiusmdo | 6 GCOC Sparring Girls Color Belt 11 - 12 Years Old
-Emtporbibendum Aliquamusrsuu | 3 GCOA Weapons Girls Color Belt 1 - 8 Years Old
+Prionvenenatis Aatifniubs | 1 B23E Combat Weapons Boys 2nd, 3rd Degree Black Belt 15 - 17 Years Old
+Ientgreieremntmu Abaittnispum | 6 BCOA Weapons Boys Color Belt 1 - 8 Years Old
+Eeuultriecisu Abhitasseaurbaitru | 4 BCOA Weapons Boys Color Belt 1 - 8 Years Old
+Tibbednumb Accumasnptetn | 1 M45B Sparring Men 4th, 5th Degree Black Belt 30 - 39 Years Old
+Liotraeros Acievrar | 4 B23C Forms Boys 2nd, 3rd Degree Black Belt 11 - 12 Years Old
+Hocnusrnma Acniialiamd | 4 B23D Sparring Boys 2nd, 3rd Degree Black Belt 13 - 14 Years Old
+Iteani Acutroronaer | 5 GCOA Forms Girls Color Belt 1 - 8 Years Old
+Actitieue Adpiubsesitbuulm | 1 B23D Combat Weapons Boys 2nd, 3rd Degree Black Belt 13 - 14 Years Old
+Otrtrocalusii Aguueapellentsequep | 2 G01B Combat Weapons Girls 1st Degree Black Belt 9 - 10 Years Old
 . . .
 ```
 
@@ -288,15 +306,15 @@ After the results are finalized, show all students from Aurora, Colorado, sorted
 
 ``` shell
 STATE STANDINGS FOR CO, searching for 'aurora', maximum place of 10
-Rfemneumtcaiian Aattristique
-Otrqunetut Aicuilslqiamu
-Arucdoioo Aidpicsignibbednumb
-Urnavolutpat Ailqumaums
-Finibusetra Ailqutead
-Mrausierta Aimdiortittorp
-Consequatloe Aleusadamda
-Usmrasc Aliquetante
-Auctoreclriesque Aloretenec
+Fuacibsunam Abiatntasas
+Efislerat Aceenasturpis
+Tusm Acniialupesndisses
+Ievrarpratp Acsumpedrieti
+Ultricestempor Acutroeichula
+Veiltat Adhocnusr
+Olremloorl Hbaitnatelmeentmu Convallisparturient Afciilssimolestie
+Feamsfda Aguueavvierar
+Diamamet Ahbitsaserupis
 . . .
 ```
 
@@ -309,13 +327,13 @@ Show who are competing in the `BOYS 1st Degree Black Belt 9 - 10 YEARS OLD` (`B0
 WORLD STANDINGS, maximum place of 99
 DIVISION WORLDS B01B Forms Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location
- 1 Eremntmulbierol Nmapahseluls 78 CONCORD, NC
- 2 Porttitornunc Proinqaum 75 DES PERES, MO
- 3 Daipbusdondmientmu Pellentsequepeelmetnume 68 SAN DIEGO, CA
- 4 Uctrolectus Cerabitucr 65 HENDERSON, NV
- 5 Lqiamufleisf Olilscacumasn 57 LAS VEGAS, NV
- 6 Loediu Celreisqeundoce 56 SUWANEE, GA
- 7 Convallisconsequat Tcaiitenmi 52 SAN DIEGO, CA
+ 1 Vehiculacrussu Ipsumiscelerisque 78 CONCORD, NC
+ 2 Finibusurssu Ictmuporttitor 75 DES PERES, MO
+ 3 Atta Velusn 68 SAN DIEGO, CA
+ 4 Apdiicsngiqius Semamximsu 65 HENDERSON, NV
+ 5 Loerius Dnigissmidasas 57 LAS VEGAS, NV
+ 6 Vitaerpimsi Ollcitiuindrmisir 56 SUWANEE, GA
+ 7 Usrsuutee Timaneaibtups 52 SAN DIEGO, CA
 . . .
 ```
 
@@ -328,13 +346,13 @@ Show all of the competitors in the top 10 for both the `WOMENS 2nd, 3rd Degree B
 WORLD STANDINGS, maximum place of 99
 DIVISION WORLDS W23A Forms Women 2nd, 3rd Degree Black Belt 18 - 29 Years Old
  Place Name Pts Location
- 1 Saodlsesefficitur Tmeprodaipbusd 75 MOORESVILLE, NC
- 2 Quisquemauris Tlelsuridiculus 61 CONCORD, NC
- 3 Donecinsin Ntosaramse 60 MISHAWAKA, IN
- 4 Afciilssiudi Ptaruirntesvetbilumu 49 MURRIETA, CA
- 5 Faemsrius Anteneaibtups 35 HENDERSON, NV
- 5 Monteslroem Dnigissmiddignissim 35 EAGAN, MN
- 7 Ltecsuviverra Abaittnnce 31 SANTA ROSA, CA
+ 1 Idciulsuevstiublumv Primisvivamus 75 MOORESVILLE, NC
+ 2 Lobortiselti Facilisieclriesque 61 CONCORD, NC
+ 3 Utrpsionn Enquenmolestie 60 MISHAWAKA, IN
+ 4 Veihcualcursus Upesndissesfermentum 49 MURRIETA, CA
+ 5 Neaibtupsotrqunet Nullamveilt 35 HENDERSON, NV
+ 5 Calsscprteiump Ucutsloreml 35 EAGAN, MN
+ 7 Sepmeronstar Eremntmulutriecs 31 SANTA ROSA, CA
 . . .
 ```
 
@@ -347,13 +365,13 @@ Show all divisions in the Rockies district that have a student from Aurora in th
 DISTRICT STANDINGS FOR Rockies, maximum place of 99
 DIVISION Rockies B01B Weapons Boys 1st Degree Black Belt 9 - 10 Years Old
  Place Name Pts Location
- 1 Ptoenitmagna Vestibulumivavumsvv 63 DES PERES, MO
- 2 Senectusplacerat Fiaclsisifmaceensa 31 AMERICAN FORK, UT
- 3 Niterudmste Hnedrreithmontes 23 FORT COLLINS, CO
- 4 Xeuall Tmepronostra 18 COLUMBIA, MO
- 5 Reoseaciina Blnaditcunnc 12 LEES SUMMIT, MO
- 6 Usicptiemtpor Elvlaoreet 10 O'FALLON, MO
- 7 Tirstqiuetnulla Inecptsoombir 6 FORT COLLINS, CO
+ 1 Museiusmdo Nuraucosnequta 63 DES PERES, MO
+ 2 Ahbiatsesctus Sepmerousree 31 AMERICAN FORK, UT
+ 3 Suspendissepahsellusp Smefacilisis 23 FORT COLLINS, CO
+ 4 Dapibusorci Nteamalesuada 18 COLUMBIA, MO
+ 5 Velitesnecuts Prionulal 12 LEES SUMMIT, MO
+ 6 Loremllutriecs Otrqunetrcoi 10 O'FALLON, MO
+ 7 Alqiuetarootrtt Epllnetsqeupernrae 6 FORT COLLINS, CO
 . . .
 ```
 
@@ -366,13 +384,13 @@ Show all forms divisions in the Rockies district that have a student from Aurora
 DISTRICT STANDINGS FOR Rockies, maximum place of 99
 DIVISION Rockies B23C Forms Boys 2nd, 3rd Degree Black Belt 11 - 12 Years Old
  Place Name Pts Location
- 1 Ahbiatsesmorbim Usjtlonaotquen 24 ARVADA, CO
- 2 Nbihtis Utetmpro 16 LEES SUMMIT, MO
- 3 Feugiatpatrurinet Rinigllafpahseluls 12 O'FALLON, MO
- 4 Faemsgravida Cosnequtatpent 10 CHESTERFIELD, MO
- 5 Eichulaseneuctse Lqiamunitedrumi Pulvirnaete 6 O'FALLON, MO
- 6 Feilsmauris Nilsamgan 3 AURORA, CO
- 6 Ultriecisunotsra Rturmumeta 3 KEARNEY, MO
+ 1 Haertareclriesque Rupisconsectetur 24 ARVADA, CO
+ 2 Dignissimucuts Ntosariverra 16 LEES SUMMIT, MO
+ 3 Tincidunteliefedn Risitquetfleisf 12 O'FALLON, MO
+ 4 Etsufaems Congueestu 10 CHESTERFIELD, MO
+ 5 Metadnoecd Gravidaabaittn Feilsidciulsu 6 O'FALLON, MO
+ 6 Ailqutepelleentsequ Accumasnsde 3 KEARNEY, MO
+ 6 Perdieitviverra Purusrutrum 3 AURORA, CO
 . . .
 ```
 

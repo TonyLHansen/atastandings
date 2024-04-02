@@ -52,9 +52,6 @@ COMPETITIONS = {
     "x-treme-weapons": "x-treme weapons",
 }
 
-# These are options that will not show up in the
-# --help output. They are mostly used for maintenance
-# of the README.
 SUPPRESSED_ARGUMENTS = [
     ("-R", "--randomize-names", True),
     ("-G", "--generate-readme", True),
@@ -158,13 +155,13 @@ def get_url(args, url):
     if usefile:
         try:
             if args.verbose:
-                print(f"looking for {args.cache_directory}/atastandings.{urlname}", file=sys.stderr)
+                print(f"looking for {args.cache_directory}/atastandings.{urlname}")
             st = os.stat(cachename)
             if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
                 if not args.ignore_cache_times:
                     os.unlink(cachename)
                     if args.verbose:
-                        print(f"{cachename} is too old -- ignored", file=sys.stderr)
+                        print(f"{cachename} is too old -- ignored")
 
             with open(cachename) as fp:
                 text = fp.read()
@@ -174,16 +171,16 @@ def get_url(args, url):
 
     if not usefile:
         if args.verbose:
-            print(f"getting url={url}", file=sys.stderr)
+            print(f"getting url={url}")
         r = requests.get(url)
         if r.status_code >= 300:
             sys.exit(f"Accessing {url} returned the status code {r.status_code}")
 
         if args.verbose > 2:
-            print(f"page={r.text}", file=sys.stderr)
+            print(f"page={r.text}")
         if not args.do_not_write_cache:
             if args.verbose:
-                print(f"writing to {cachename}", file=sys.stderr)
+                print(f"writing to {cachename}")
             with open(f"{cachename}.tmp", "w") as fp:
                 fp.write(r.text)
             os.rename(f"{cachename}.tmp", f"{cachename}")
@@ -196,7 +193,7 @@ def clean_cache(args):
     """Clear out all files in the cache directory named "atastandings." followed by anything."""
     for fname in glob.glob(f"{args.cache_directory}/atastandings.*"):
         if args.verbose:
-            print(f"Cleaning {fname}", file=sys.stderr)
+            print(f"Cleaning {fname}")
         os.unlink(fname)
 
 
@@ -654,7 +651,7 @@ def check_option(arglist, opts, choices):
                 sys.exit(f"{sys.argv[0]}: error: argument {opts}: invalid choice: '{arg}' (choose from " f"{choices})")
 
 
-def print_readme_heading(print_example_preamble=True):
+def print_readme_heading():
     """Print the opening of the readme file."""
     # pylint: disable=line-too-long,bad-continuation
     print(
@@ -677,14 +674,14 @@ def print_readme_heading(print_example_preamble=True):
 
 	* `--worlds`, `-W` -- search the world standings.
 	* `--district name`, `-d name` -- search the given district, one of
-    `Mid-America`,
-    `Midwest`,
-    `Northeast`,
-    `Northwest`,
-    `Rockies`,
-    `Southeast`,
-    `South`,
-    or `Southwest`.
+	`Mid-America`,
+	`Midwest`,
+	`Northeast`,
+	`Northwest`,
+	`Rockies`,
+	`Southeast`,
+	`South`,
+	or `Southwest`.
 	This may be specified multiple times.
 	* `--state ABBREV`, `-S ABBREV` -- search the given state or province, using the two character state or province postoffice code.
 	This may be specified multiple times.
@@ -708,14 +705,14 @@ def print_readme_heading(print_example_preamble=True):
 	* `--division-code code`, `-c code` -- Restrict the output to the specified diision code.
 	This may be specified multiple times.
 	* `--competition competition` -- Only print this competition, one of
-    `forms`,
-    `weapons`,
-    `combat-weapons`,
-    `sparring`,
-    `creative-forms`,
-    `creative-weapons`,
-    `x-treme-forms`,
-    or `x-treme-weapons`.
+	`forms`,
+	`weapons`,
+	`combat-weapons`,
+	`sparring`,
+	`creative-forms`,
+	`creative-weapons`,
+	`x-treme-forms`,
+	or `x-treme-weapons`.
 	May be specified multiple times.
 
 	(Not all divisions have competitors in each state or province.
@@ -782,24 +779,12 @@ def print_readme_heading(print_example_preamble=True):
 	Finally, you can ask for help on what options are available:
 
 	* `--help`, `-h` -- Show a help message listing all of the options and variations.
-	* `--extended-help` -- Show the preamble of the README
 
-	## Configuration File
-	Some of the options shown above can be specified in a configuration file.
-	This should be a file named .atastandings.ini that lives in the same
-	directory/folder as the atastandings program itself or the user's
-	HOME/HOMEPATH directory/folder.
-	It consists of lines that have the configuration option, a colon (`:`) and a value.
-	Use `#` to start a comment.
-	Use `true` and `false` for boolean options. The options that can be specified in
-	the configuration file and their default values are:
 
-    `by-person: false`
-    `by-person-with-divisions: false`
-    `omit: "string"`
-    `list-division-codes: false`
-    `cache-directory: "string"`
-    `dots: false`
+	# Sample Use Examples
+
+	The following examples show some of the ways that the various options can be combined together.
+	All sample output uses fictitious names, and only shows the first 10 lines of the output.
 
 	""".replace(
             "\t", ""
@@ -807,23 +792,7 @@ def print_readme_heading(print_example_preamble=True):
             1:
         ]
     )
-
-    if print_example_preamble:
-        print(
-            """
-	# Sample Use Examples
-
-	The following examples show some of the ways that the various options can be combined together.
-	All sample output uses fictitious names, and only shows the first 10 lines of the output.
-
-	""".replace(
-                "\t", ""
-            )[
-                1:
-            ]
-        )
     # pylint: enable=line-too-long,bad-continuation
-    sys.exit()
 
 
 def print_readme_trailer():
@@ -855,7 +824,6 @@ You might need to execute it as `./atastandings` followed by the options you des
         ]
     )
     # pylint: enable=line-too-long,bad-continuation
-    sys.exit()
 
 
 def start_readme(args):
@@ -912,9 +880,8 @@ def stop_readme(args, old_stdout):
     print("")
 
 
-def parse_options(conf):
+def parse_options():
     """Set up all of the option parsing"""
-    conf = {} if conf is None else conf
     parser = argparse.ArgumentParser(description=__doc__, epilog=EPILOG)
     grp_search = parser.add_argument_group("Search Options")
     grp_search.add_argument("-W", "--worlds", help="Search the world standings.", action="store_true")
@@ -954,30 +921,13 @@ def parse_options(conf):
     )
 
     grp_output = parser.add_argument_group("Output Options")
+    grp_output.add_argument("-b", "--by-person", help="Print the standings by name", action="store_true")
+    grp_output.add_argument("-B", "--by-person-with-divisions", help="Print the standings by name", action="store_true")
     grp_output.add_argument(
-        "-b", "--by-person", help="Print the standings by name", action="store_true", default=conf.get("by-person")
-    )
-    grp_output.add_argument(
-        "-B",
-        "--by-person-with-divisions",
-        help="Print the standings by name",
-        action="store_true",
-        default=conf.get("by-person-with-divisions"),
-    )
-    grp_output.add_argument(
-        "-O",
-        "--omit",
-        help="Item to skip printing. May be specified multiple times.",
-        type=str,
-        action="append",
-        default=conf.get("omit"),
+        "-O", "--omit", help="Item to skip printing. May be specified multiple times.", type=str, action="append"
     )
     grp_search.add_argument(
-        "-l",
-        "--list-division-codes",
-        help="List the division codes instead of printing standings",
-        action="store_true",
-        default=conf.get("list-division-codes"),
+        "-l", "--list-division-codes", help="List the division codes instead of printing standings", action="store_true"
     )
 
     grp_cache = parser.add_argument_group("Cache Control Options")
@@ -986,7 +936,7 @@ def parse_options(conf):
         "--cache-directory",
         help="Keep a cache of the web pages in this directory.",
         type=str,
-        default=conf.get("cache-directory", get_cache_dir()),
+        default=get_cache_dir(),
     )
     grp_cache.add_argument(
         "-I",
@@ -1010,12 +960,9 @@ def parse_options(conf):
         "--verbose",
         help="Verbose, print some debugging information. May be specified multiple times for higher verbosity levels.",
         action="count",
-        default=conf.get("verbose", 0),
+        default=0,
     )
-    grp_other.add_argument(
-        "--dots", help="Print a dot for each web page accessed.", action="store_true", default=conf.get("dots")
-    )
-    grp_other.add_argument("--extended-help", help="Show the preamble of the README", action="store_true")
+    grp_other.add_argument("--dots", help="Print a dot for each web page accessed.", action="store_true")
 
     for a, arg, has_option in SUPPRESSED_ARGUMENTS:
         if has_option:
@@ -1025,7 +972,7 @@ def parse_options(conf):
     return parser.parse_args()
 
 
-def get_configuration():
+def mixin_configuration(args):
     """
     Look for a configuration file and mix its values in
     with the command line.
@@ -1033,36 +980,39 @@ def get_configuration():
         ~/.atastandings.yaml
         dirname($0)/.atastandings.yaml
     """
-
-    verbose = sum(key in ("-v", "--verbose") for key in sys.argv)
-
-    yaml_name = "/.atastandings.ini"
+    yaml_name = ".atastandings.yaml"
     conf_args = {}
-    # pylint: disable=bad-continuation
     for conf in [
-        os.getenv("HOME", "/does-not-exist/") + yaml_name,
-        os.getenv("HOMEPATH", "/does-not-exist/") + yaml_name,
-        os.path.dirname(os.path.realpath(__file__)) + yaml_name,
+        os.getenv("HOME", "/does-not-exist/") + "/" + yaml_name,
+        os.path.dirname(os.path.realpath(__file__)) + "/" + yaml_name,
     ]:
-        if verbose:
-            print(f"looking for {conf}")
+        print(f"looking for {conf}")
         try:
             with open(conf) as fp:
                 conf_args = yaml.safe_load(fp)
-                return conf_args
+            print(f"conf_args={conf_args}")
+            args_dict = vars(args)
+            print(f"args_dict={args_dict}")
+            for k, v in conf_args.items():
+                if k not in args_dict:
+                    print(f"args.{k} <= {v}")
+                    setattr(args, k, v)
+                    print(f"args.verbose={args.verbose}")
+            break
         except yaml.YAMLError as e:
-            print(f"Error parsing {conf}: {e}", file=sys.stderr)
+            print(f"Error parsing {conf}: {e}")
         except FileNotFoundError as e:
             pass  # go to the next one
-    # pylint: enable=bad-continuation
 
-    return {}
+    return args
 
 
 def main():
     """main function"""
-    conf = get_configuration()
-    args = parse_options(conf)
+    args = parse_options()
+    args = mixin_configuration(args)
+    print(f"verbose={args.verbose}")
+    sys.exit()
 
     # check the values of the --omit option
     check_option(args.omit, "-O/--omit", OMIT_CHOICES)
@@ -1075,17 +1025,16 @@ def main():
     # check the values of the --competition option
     check_option(args.competition, "--competiton", COMPETITIONS.keys())
 
-    if args.extended_help:
-        print_readme_heading(False)
-
     if args.output:
         sys.stdout = open(args.output, "a")
 
     if args.print_readme_heading:
         print_readme_heading()
+        sys.exit()
 
     if args.print_readme_trailer:
         print_readme_trailer()
+        sys.exit()
 
     if args.generate_readme:
         old_stdout = start_readme(args)
