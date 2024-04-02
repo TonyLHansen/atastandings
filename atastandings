@@ -794,12 +794,12 @@ def print_readme_heading(print_example_preamble=True):
 	Use `true` and `false` for boolean options. The options that can be specified in
 	the configuration file and their default values are:
 
-    `by-person: false`
-    `by-person-with-divisions: false`
-    `omit: "string"`
-    `list-division-codes: false`
-    `cache-directory: "string"`
-    `dots: false`
+    by-person: false
+    by-person-with-divisions: false
+    omit: "string"
+    list-division-codes: false
+    cache-directory: "string"
+    dots: false
 
 	""".replace(
             "\t", ""
@@ -884,7 +884,7 @@ def start_readme(args):
         print("")
         print(args.readme_explanation)
     print("")
-    print("``` shell")
+    print("```")
     if args.maximum_lines:
         old_stdout = sys.stdout
         sys.stdout = io.StringIO()
