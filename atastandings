@@ -30,15 +30,17 @@ USED_WORDS = []
 RANDOM_NAME_MAP = {}
 
 OMIT_CHOICES = ["location", "region", "place", "code", "division", "points"]
+CA_PROVINCES = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]
 DISTRICTS = {
-    "Northeast": ["va", "wv", "md", "pa", "de", "nj", "ny", "ct", "ri", "ma", "vt", "nh", "me", "dc"],
-    "Southeast": ["tn", "nc", "sc", "ga", "fl", "al", "ms"],
-    "Mid-America": ["wi", "mi", "il", "in", "oh", "ky", "oh"],
+    "Mid-America": ["wi", "mi", "il", "in", "oh", "ky"],
     "Midwest": ["ne", "ka", "mo"],
+    "North": ["nd", "mn", "sd", "ia"],
+    "Northeast": ["va", "wv", "md", "pa", "de", "nj", "ny", "ct", "ri", "ma", "vt", "nh", "me", "dc"],
+    "Northwest": ["id", "or", "wa", "bc", "ab", "sk", "mb"],
+    "Southeast": ["tn", "nc", "sc", "ga", "fl", "al", "ms"],
     "South": ["tx", "la", "ar", "ok"],
     "Southwest": ["az", "nv", "ca"],
     "Rockies": ["nm", "co", "ut", "wy", "mo"],
-    "Northwest": ["id", "or", "wa", "bc", "bc", "sk", "mb"],
 }
 
 COMPETITIONS = {
@@ -530,7 +532,7 @@ def get_country(state):
     # Set the country code appropriately based on the state.
     # Experimentally, it looks like "country=$COUNTRY" is NOT required,
     # but we'll pass it in anyway.
-    if state in ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]:
+    if state in CA_PROVINCES:
         country = "CA"
     else:
         country = "US"
