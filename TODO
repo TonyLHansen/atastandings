@@ -1,0 +1,3 @@
+add --no- options to turn off defaults from the configuration file
+add time-based cache that keeps adding values
+

@@ -18,6 +18,7 @@ test:
 	./atastandings -W -S nj -s parlin -p 10
 	./atastandings -S nj -s parlin -p 10
 	./atastandings -S nj -s parlin -p 1
+	./atastandings -m division -S nj -s parlin -p 1
 
 readme: \
 	readme-print-readme-heading \

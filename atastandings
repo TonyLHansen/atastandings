@@ -30,7 +30,11 @@ USED_WORDS = []
 RANDOM_NAME_MAP = {}
 
 OMIT_CHOICES = ["location", "region", "place", "code", "division", "points"]
+# add to minimized() when adding to this list
+MINIMIZE_CHOICES = ["division"]
+
 CA_PROVINCES = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]
+US_STATES = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KA", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MO", "MS", "NC", "ND", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"]
 DISTRICTS = {
     "Mid-America": ["wi", "mi", "il", "in", "oh", "ky"],
     "Midwest": ["ne", "ka", "mo"],
@@ -53,6 +57,7 @@ COMPETITIONS = {
     "x-treme-forms": "x-treme forms",
     "x-treme-weapons": "x-treme weapons",
 }
+COMPETITIONS_VALUES = COMPETITIONS.values()
 
 # These are options that will not show up in the
 # --help output. They are mostly used for maintenance
@@ -417,21 +422,35 @@ def info_by_name(info):
     return name_info
 
 
-def omitted(args, nm, s):
+def minimized(args, nm, prefix, s):
+    """
+    Check if nm is in the args.minimized list.
+    If not, return the string s.
+    If so, return a mimized version of the string.
+    """
+    if args.minimize and nm in args.minimize:
+        # if nm == "division", etc. Add to this when 
+        for words in COMPETITIONS_VALUES:
+            if str(s).upper().startswith(words.upper()):
+                return prefix + words.title()
+    return prefix + str(s)
+
+
+def omitted(args, nm, prefix, s):
     """
     Check if nm is in the args.omit list.
-    If not, print the string s without a line ending.
+    If not, return the string s.
     If so, return an empty string.
     """
-    return s if not args.omit or nm not in args.omit else ""  # if nm in args.omit else s
+    return minimized(args, nm, prefix, s) if not args.omit or nm not in args.omit else ""  # if nm in args.omit else s
 
 
-def print_omitted(args, nm, s):
+def print_omitted(args, nm, prefix, s):
     """
     Check if nm is in the args.omit list.
     If not, print the string s without a line ending.
     """
-    print(omitted(args, nm, s), end="")
+    print(omitted(args, nm, prefix, s), end="")
 
 
 def sortable_name(nm):
@@ -454,16 +473,16 @@ def print_info_by_name(args, info):
     name_info = info_by_name(info)
     for name in sorted(name_info.keys()):
         val = name_info[name]
-        print_omitted(args, "name", val["name"])
-        print_omitted(args, "location", f' {val["location"]}')
+        print_omitted(args, "name", "", val["name"])
+        print_omitted(args, "location", ' ', val["location"])
         if args.by_person_with_divisions:
             for div in val["divisions"]:
                 print(" |", end="")
-                print_omitted(args, "region", f' {div["region"]}')
-                print_omitted(args, "place", f' {div["place"]}')
-                print_omitted(args, "code", f' {div["code"]}')
-                print_omitted(args, "division", f' {div["division"]}')
-                print_omitted(args, "points", f' {div["points"]}')
+                print_omitted(args, "region", ' ', div["region"])
+                print_omitted(args, "place", ' ', div["place"])
+                print_omitted(args, "code", ' ', div["code"])
+                print_omitted(args, "division", ' ', div["division"])
+                print_omitted(args, "points", ' ', div["points"])
         print("")
 
 
@@ -471,22 +490,22 @@ def print_info_by_division(args, info):
     """Given a structure'd set of standings, print it by division"""
     for i in info:
         print(f"DIVISION", end="")
-        print_omitted(args, "region", f' {i["region"]}')
-        print_omitted(args, "code", f' {i["code"]}')
-        print_omitted(args, "division", f' {i["division"]}')
+        print_omitted(args, "region", ' ', i["region"])
+        print_omitted(args, "code", ' ', i["code"])
+        print_omitted(args, "division", ' ', i["division"])
         print("")
 
-        print_omitted(args, "place", " Place")
-        print_omitted(args, "name", " Name")
-        print_omitted(args, "points", " Pts")
-        print_omitted(args, "location", " Location")
+        print_omitted(args, "place", " ", "Place")
+        print_omitted(args, "name", " ", "Name")
+        print_omitted(args, "points", " ", "Pts")
+        print_omitted(args, "location", " ", "Location")
         print("")
 
         for j in i["places"]:
-            print_omitted(args, "place", f' {j["place"]}')
-            print_omitted(args, "name", f' {j["name"]}')
-            print_omitted(args, "points", f' {j["points"]}')
-            print_omitted(args, "location", f' {j["location"]}')
+            print_omitted(args, "place", ' ', j["place"])
+            print_omitted(args, "name", ' ', j["name"])
+            print_omitted(args, "points", ' ', j["points"])
+            print_omitted(args, "location", ' ', j["location"])
             print("")
 
 
@@ -612,12 +631,14 @@ def print_districts(args, need_nl):
             print_info(args, all_info)
 
 
+def upper_case(lst):
+    """Convert all elements in the array to uppercase"""
+    if lst:
+        for i, l in enumerate(lst):
+            lst[i] = l.upper()
+
 def print_states(args, need_nl):
     """Print the state standings"""
-    # The web site allows for both lower and upper case. Upper case displays better.
-    for i in range(len(args.state)):
-        args.state[i] = args.state[i].upper()
-
     for state in args.state:
         if need_nl or state != args.state[0]:
             print("")
@@ -653,7 +674,7 @@ def check_option(arglist, opts, choices):
     if arglist:
         for arg in arglist:
             if arg not in choices:
-                sys.exit(f"{sys.argv[0]}: error: argument {opts}: invalid choice: '{arg}' (choose from " f"{choices})")
+                sys.exit(f"{sys.argv[0]}: error: argument {opts}: invalid choice: '{arg}' (choose from " f"{list(choices)})")
 
 
 def print_readme_heading(print_example_preamble=True):
@@ -757,6 +778,12 @@ def print_readme_heading(print_example_preamble=True):
 	where `item` is one of `location`, `place`, `points`, `region`, `division` or `code`.
 	The `region` is either the world "WORLDS" or the state or province name.
 	The code is the division code.
+	This may be specified multiple times.
+
+	* `--minimize item`, `-m item` -- Minimize information from the printouts,
+	where `item` is currently only `division`.
+	For `division`, a division such as `Forms Boys Color Belt 9 - 10 Years Old` would be minimized to just `Forms`.
+        (The division code, which is usually printed as well, can be used to differentiate between divisions.)
 	This may be specified multiple times.
 
 	## Web Cache
@@ -921,7 +948,7 @@ def parse_options(conf):
     grp_search = parser.add_argument_group("Search Options")
     grp_search.add_argument("-W", "--worlds", help="Search the world standings.", action="store_true")
     grp_search.add_argument(
-        "-S", "--state", help="State to search. May be specified multiple times.", type=str, action="append"
+        "-S", "--state", "--province", help="State/Province to search. May be specified multiple times.", type=str, action="append"
     )
     grp_search.add_argument(
         "-d", "--district", help="District to search. May be specified multiple times.", type=str, action="append"
@@ -973,6 +1000,14 @@ def parse_options(conf):
         type=str,
         action="append",
         default=conf.get("omit"),
+    )
+    grp_output.add_argument(
+        "-m",
+        "--minimize",
+        help="Item to minimize when printing. May be specified multiple times.",
+        type=str,
+        action="append",
+        default=conf.get("minimize"),
     )
     grp_search.add_argument(
         "-l",
@@ -1068,6 +1103,8 @@ def main():
 
     # check the values of the --omit option
     check_option(args.omit, "-O/--omit", OMIT_CHOICES)
+    # check the values of the --minimize option
+    check_option(args.minimize, "-m/--minimize", MINIMIZE_CHOICES)
     # check the values of the --district option
     if args.district:
         # Re-capitalize the district names
@@ -1076,6 +1113,9 @@ def main():
         check_option(args.district, "-d/--district", DISTRICTS.keys())
     # check the values of the --competition option
     check_option(args.competition, "--competiton", COMPETITIONS.keys())
+    # The web site allows for both lower and upper case. Upper case displays better.
+    upper_case(args.state)
+    check_option(args.state, "-S/--state", US_STATES + CA_PROVINCES)
 
     if args.extended_help:
         print_readme_heading(False)
