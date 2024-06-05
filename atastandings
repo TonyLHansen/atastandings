@@ -825,9 +825,10 @@ def print_readme_heading(print_example_preamble=True):
 
     by-person: false
     by-person-with-divisions: false
-    omit: "string"
     list-division-codes: false
-    cache-directory: "string"
+    omit: ""
+    minimize: ""
+    cache-directory: ""
     dots: false
 
 	""".replace(
