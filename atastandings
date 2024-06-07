@@ -474,8 +474,7 @@ def print_info_by_name(args, info):
     for name in sorted(name_info.keys()):
         val = name_info[name]
         print_omitted(args, "name", "", val["name"])
-        print(" |", end="")
-        print_omitted(args, "location", ' ', val["location"])
+        print_omitted(args, "location", ' | ', val["location"])
         if args.by_person_with_divisions:
             for div in val["divisions"]:
                 print(" |", end="")
