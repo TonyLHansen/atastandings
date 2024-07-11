@@ -44,7 +44,7 @@ DISTRICTS = {
     "Southeast": ["tn", "nc", "sc", "ga", "fl", "al", "ms"],
     "South": ["tx", "la", "ar", "ok"],
     "Southwest": ["az", "nv", "ca"],
-    "Rockies": ["nm", "co", "ut", "wy", "mo"],
+    "Rockies": ["nm", "co", "ut", "wy"],
 }
 
 COMPETITIONS = {
