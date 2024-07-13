@@ -34,7 +34,13 @@ OMIT_CHOICES = ["location", "region", "place", "code", "division", "points"]
 MINIMIZE_CHOICES = ["division"]
 
 CA_PROVINCES = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]
-US_STATES = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KA", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "NC", "ND", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"]
+# fmt: off
+US_STATES = [
+    "AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KA",
+    "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "NC", "ND", "NH", "NJ", "NM", "NV", "NY", "OH",
+    "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY",
+]
+# fmt: on
 DISTRICTS = {
     "Mid-America": ["wi", "mi", "il", "in", "oh", "ky"],
     "Midwest": ["ne", "ka", "mo"],
@@ -70,6 +76,7 @@ SUPPRESSED_ARGUMENTS = [
     ("-X", "--print-readme-heading", False),
     ("-Y", "--print-readme-trailer", False),
     ("-o", "--output", True),
+    ("-9", "--internal-checks", False),
 ]
 
 
@@ -429,7 +436,7 @@ def minimized(args, nm, prefix, s):
     If so, return a mimized version of the string.
     """
     if args.minimize and nm in args.minimize:
-        # if nm == "division", etc. Add to this when 
+        # if nm == "division", etc. Add to this when
         for words in COMPETITIONS_VALUES:
             if str(s).upper().startswith(words.upper()):
                 return prefix + words.title()
@@ -474,15 +481,15 @@ def print_info_by_name(args, info):
     for name in sorted(name_info.keys()):
         val = name_info[name]
         print_omitted(args, "name", "", val["name"])
-        print_omitted(args, "location", ' | ', val["location"])
+        print_omitted(args, "location", " | ", val["location"])
         if args.by_person_with_divisions:
             for div in val["divisions"]:
                 print(" |", end="")
-                print_omitted(args, "region", ' ', div["region"])
-                print_omitted(args, "place", ' ', div["place"])
-                print_omitted(args, "code", ' ', div["code"])
-                print_omitted(args, "division", ' ', div["division"])
-                print_omitted(args, "points", ' ', div["points"])
+                print_omitted(args, "region", " ", div["region"])
+                print_omitted(args, "place", " ", div["place"])
+                print_omitted(args, "code", " ", div["code"])
+                print_omitted(args, "division", " ", div["division"])
+                print_omitted(args, "points", " ", div["points"])
         print("")
 
 
@@ -490,9 +497,9 @@ def print_info_by_division(args, info):
     """Given a structure'd set of standings, print it by division"""
     for i in info:
         print(f"DIVISION", end="")
-        print_omitted(args, "region", ' ', i["region"])
-        print_omitted(args, "code", ' ', i["code"])
-        print_omitted(args, "division", ' ', i["division"])
+        print_omitted(args, "region", " ", i["region"])
+        print_omitted(args, "code", " ", i["code"])
+        print_omitted(args, "division", " ", i["division"])
         print("")
 
         print_omitted(args, "place", " ", "Place")
@@ -502,10 +509,10 @@ def print_info_by_division(args, info):
         print("")
 
         for j in i["places"]:
-            print_omitted(args, "place", ' ', j["place"])
-            print_omitted(args, "name", ' ', j["name"])
-            print_omitted(args, "points", ' ', j["points"])
-            print_omitted(args, "location", ' ', j["location"])
+            print_omitted(args, "place", " ", j["place"])
+            print_omitted(args, "name", " ", j["name"])
+            print_omitted(args, "points", " ", j["points"])
+            print_omitted(args, "location", " ", j["location"])
             print("")
 
 
@@ -637,6 +644,7 @@ def upper_case(lst):
         for i, l in enumerate(lst):
             lst[i] = l.upper()
 
+
 def print_states(args, need_nl):
     """Print the state standings"""
     for state in args.state:
@@ -674,7 +682,9 @@ def check_option(arglist, opts, choices):
     if arglist:
         for arg in arglist:
             if arg not in choices:
-                sys.exit(f"{sys.argv[0]}: error: argument {opts}: invalid choice: '{arg}' (choose from " f"{list(choices)})")
+                sys.exit(
+                    f"{sys.argv[0]}: error: argument {opts}: invalid choice: '{arg}' (choose from " f"{list(choices)})"
+                )
 
 
 def print_readme_heading(print_example_preamble=True):
@@ -949,7 +959,12 @@ def parse_options(conf):
     grp_search = parser.add_argument_group("Search Options")
     grp_search.add_argument("-W", "--worlds", help="Search the world standings.", action="store_true")
     grp_search.add_argument(
-        "-S", "--state", "--province", help="State/Province to search. May be specified multiple times.", type=str, action="append"
+        "-S",
+        "--state",
+        "--province",
+        help="State/Province to search. May be specified multiple times.",
+        type=str,
+        action="append",
     )
     grp_search.add_argument(
         "-d", "--district", help="District to search. May be specified multiple times.", type=str, action="append"
@@ -1097,10 +1112,36 @@ def get_configuration():
     return {}
 
 
+def find_duplicates(nm, arr):
+    """Look for duplicates in the list"""
+    s = set()
+    for p in arr:
+        if p in s:
+            print(f"the value {p} is duplicated in {nm}")
+        else:
+            s.add(p)
+
+
+def check_global_arrays():
+    """Cross check some of the arrays looking for mistakes"""
+    find_duplicates("CA_PROVINCES", CA_PROVINCES)
+    find_duplicates("US_STATES", US_STATES)
+    all_districts = [value for array in DISTRICTS.values() for value in array]
+    find_duplicates("DISTRICTS", all_districts)
+    find_duplicates("CA_PROVINCES+US_STATES", CA_PROVINCES + US_STATES)
+
+
 def main():
     """main function"""
     conf = get_configuration()
     args = parse_options(conf)
+
+    # check the data
+    check_global_arrays()
+
+    if args.internal_checks:
+        print("Internal checks complete")
+        sys.exit()
 
     # check the values of the --omit option
     check_option(args.omit, "-O/--omit", OMIT_CHOICES)
