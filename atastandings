@@ -34,7 +34,7 @@ OMIT_CHOICES = ["location", "region", "place", "code", "division", "points"]
 MINIMIZE_CHOICES = ["division"]
 
 CA_PROVINCES = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]
-US_STATES = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KA", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MO", "MS", "NC", "ND", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"]
+US_STATES = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KA", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "NC", "ND", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"]
 DISTRICTS = {
     "Mid-America": ["wi", "mi", "il", "in", "oh", "ky"],
     "Midwest": ["ne", "ka", "mo"],
@@ -44,7 +44,7 @@ DISTRICTS = {
     "Southeast": ["tn", "nc", "sc", "ga", "fl", "al", "ms"],
     "South": ["tx", "la", "ar", "ok"],
     "Southwest": ["az", "nv", "ca"],
-    "Rockies": ["nm", "co", "ut", "wy", "mo"],
+    "Rockies": ["nm", "co", "ut", "wy"],
 }
 
 COMPETITIONS = {
