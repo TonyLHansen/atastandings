@@ -163,9 +163,6 @@ def get_url(args, url):
     Cache files older than 24 hours are automatically ignored.
     """
 
-    if args.dots:
-        print(".", end="", file=sys.stderr)
-        sys.stderr.flush()
     urlname = re.sub("[^a-zA-Z0-9_]", "", url)
     cachename = f"{args.cache_directory}/atastandings.{urlname}"
     usefile = not args.ignore_existing_cache
@@ -180,6 +177,10 @@ def get_url(args, url):
                     if args.verbose:
                         print(f"{cachename} is too old -- ignored", file=sys.stderr)
 
+            if args.dots:
+                print(".", end="", file=sys.stderr)
+                sys.stderr.flush()
+
             with open(cachename) as fp:
                 text = fp.read()
 
@@ -187,6 +188,10 @@ def get_url(args, url):
             usefile = False
 
     if not usefile:
+        if args.dots:
+            print(":", end="", file=sys.stderr)
+            sys.stderr.flush()
+
         if args.verbose:
             print(f"getting url={url}", file=sys.stderr)
         r = requests.get(url)
@@ -810,13 +815,14 @@ def print_readme_heading(print_example_preamble=True):
 	Doing this will give you slower response times.
 	* `--ignore-cache-times`, `-T` -- Sometimes you want to ignore that the fact that the cache file is older than 24 hours.
 	* `--do-not-write-cache`, `-D` -- Sometimes you might want the cache files to not be written.
-	For example, you can use use this option if there are problems on your system with the cache directory.
-	Doing this will give you slower response times when you run the program again.
+	For example, you can use this option if there are problems on your system with the cache directory.
+
+        Note: Not using the cache will give you slow response times each time you run the program because of the web lookups.
 
 
 	## Getting Help and Miscellaneous Other Options
 
-	* `--dots`, `-.` -- Dots will be printed for each file that is being retrieved from the web or the cache.
+	* `--dots`, `-.` -- Dots or colons will be printed for each file that is being retrieved from the web (":") or the cache (".".
 
 	Finally, you can ask for help on what options are available:
 

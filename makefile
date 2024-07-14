@@ -177,6 +177,18 @@ parlin:
 	@echo Districts Rings
 	./atastandings --district northeast -k parlin
 
+parlin-T:
+	./atastandings -T -B --worlds -s parlin
+	@echo
+	@echo State Champions
+	./atastandings -T -b --state nj -s parlin --maximum-place 1 --omit location
+	@echo
+	@echo Advancing to Districts
+	./atastandings -T -b --state nj -s parlin --maximum-place 10 --omit location
+	@echo
+	@echo Districts Rings
+	./atastandings --district northeast -k parlin
+
 save:
 	./atastandings -b -W -S nj -S pa -S ca -O location
 
