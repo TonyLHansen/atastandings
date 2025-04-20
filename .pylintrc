@@ -21,7 +21,8 @@ output-format=parseable
 [FORMAT]
 indent-string='    '
 [BASIC]
-constant-rgx=[a-zA-Z][A-Z0-9a-z_]*$
+#constant-rgx=^[a-zA-Z][A-Z0-9a-z_]*$
+const-rgx=^[a-zA-Z][A-Z0-9a-z_]*$
 [ELIF]
 [LOGGING]
 [DESIGN]

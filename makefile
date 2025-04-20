@@ -1,3 +1,12 @@
+l: ab-l ag-l at-l
+ab-l:
+	./atastandings -R -C $$PWD/test-files-bz2 -l
+ag-l:
+	./atastandings -R -C $$PWD/test-files-gz -l
+at-l:
+	./atastandings -R -C $$PWD/test-files -l
+
+
 test:
 	./atastandings --help # > /dev/null
 	./atastandings -l
@@ -43,7 +52,7 @@ readme-print-readme-heading:
 
 readme-school-in-world:
 	@echo readme-school-in-world
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show School's Students in the World Standings" \
 		-2 "Show all students from Aurora, Colorado in the world standings." \
@@ -51,7 +60,7 @@ readme-school-in-world:
 
 readme-school-in-worlds-or-state:
 	@echo readme-school-in-worlds-or-state
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show School's Students in Either Worlds or State Standings" \
 		-2 "Show all students from Aurora, Colorado in either the worlds or Colorado state standings." \
@@ -59,7 +68,7 @@ readme-school-in-worlds-or-state:
 
 readme-leading-in-worlds-state:
 	@echo readme-leading-in-worlds-state
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show Students Leading Competition in Worlds or States" \
 		-2 "Show all students from Aurora, Colorado leading the competition in either the worlds or state standings." \
@@ -67,7 +76,7 @@ readme-leading-in-worlds-state:
 
 readme-state-champions:
 	@echo readme-state-champions
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show State Champions (after final results)" \
 		-2 "After the results are finalized, show all state champions from Aurora, Colorado." \
@@ -75,7 +84,7 @@ readme-state-champions:
 
 readme-state-champions-with-divisions:
 	@echo readme-state-champions-with-divisions
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show State Champion Names with Divisions (after final results)" \
 		-2 "After the results are finalized, show all state champions from Aurora, Colorado, sorted by name. \
@@ -86,7 +95,7 @@ Do not print the location, points or region values." \
 
 readme-state-champion-names:
 	@echo readme-state-champion-names
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Print State Champion Names (after final results)" \
 		-2 "After the results are finalized, show all state champions from Aurora, Colorado, sorted by name. \
@@ -95,7 +104,7 @@ Print *ONLY* their names, without their location." \
 
 readme-district-eligible-by-division:
 	@echo readme-district-eligible-by-division
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show District Championship Eligible Students by Division (after final results)" \
 		-2 "After the results are finalized, show all students from Aurora, Colorado \
@@ -104,7 +113,7 @@ who are eligible to compete in the District Champoionships." \
 
 readme-district-eligible-by-name:
 	@echo readme-district-eligible-by-name
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show District Championship Eligible Students by Name (after final results)" \
 		-2 "After the results are finalized, show all students from Aurora, Colorado, sorted by name, \
@@ -116,7 +125,7 @@ Do not print the location, points or region values." \
 
 readme-district-elibigle-students:
 	@echo readme-district-elibigle-students
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show Names of District Championship Eligible Students (after final results)" \
 		-2 "After the results are finalized, show all students from Aurora, Colorado, sorted by name, \
@@ -126,7 +135,7 @@ Print *ONLY* their names, without their location." \
 
 readme-competitors-in-division:
 	@echo readme-competitors-in-division
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show Competitors of a Division" \
 		-2 "Show who are competing in the \`BOYS 1st Degree Black Belt 9 - 10 YEARS OLD\` (\`B01B\`) division at Worlds." \
@@ -134,7 +143,7 @@ readme-competitors-in-division:
 
 readme-competitors-multiple-divisions:
 	@echo readme-competitors-multiple-divisions
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show Competitors of Multiple Divisions at Worlds" \
 		-2 "Show all of the competitors in the top 10 for both the \`WOMENS 2nd, 3rd Degree Black Belt Age 18 - 29\` (\`W23A\`) \
@@ -143,7 +152,7 @@ and \`MENS 2nd, 3rd Degree Black Belt Age 18 - 29\` (\`M23A\`) divisions." \
 
 readme-district-divisions-from-school:
 	@echo readme-district-divisions-from-school
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show Rockies Districts Students from Aurora" \
 		-2 "Show all divisions in the Rockies district that have a student from Aurora in the division." \
@@ -151,7 +160,7 @@ readme-district-divisions-from-school:
 
 readme-district-forms-divisions-from-school:
 	@echo readme-district-forms-divisions-from-school
-	./atastandings -R lorem.words -M 10 \
+	./atastandings -N lorem.words -M 10 \
 		 --output new-readme \
 		-G "Show Rockies Districts Forms Competition with Students from Aurora" \
 		-2 "Show all forms divisions in the Rockies district that have a student from Aurora in the division." \
