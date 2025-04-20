@@ -155,7 +155,7 @@ def strip_html(l):
     return l
 
 
-def stat_cache(cachename):
+def cache_stat(cachename):
     """Search the cachename for .gz, .bz2, "" versions. Return cachename with suffix plus stat info."""
     for suffix in ZIP_SUFFIXES:
         try:
@@ -203,10 +203,10 @@ def get_url(args, url):
             if args.verbose:
                 print(f"looking for {args.cache_directory}/atastandings.{urlname}", file=sys.stderr)
 
-            (cachename, st) = stat_cache(cachename_base)
+            (cachename, st) = cache_stat(cachename_base)
             if not args.cache_required:
-                if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
-                    if not args.ignore_cache_times:
+                if not args.ignore_cache_times and st is not None:
+                    if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
                         for sfx in ZIP_SUFFIXES:
                             try:
                                 os.unlink(cachename + sfx)
@@ -245,7 +245,7 @@ def get_url(args, url):
         suffix = ".bz2" if args.bzip2_cache else ".gz" if args.gzip_cache else ""
         if args.verbose:
             print(f"writing to {cachename_base}{suffix}", file=sys.stderr)
-        with open_cache_write(f"{cachename_base}{suffix}.tmp", "wt") as fp:
+        with open_cache_write(args, f"{cachename_base}{suffix}.tmp", "wt") as fp:
             fp.write(r.text)
         os.rename(f"{cachename_base}{suffix}.tmp", f"{cachename_base}{suffix}")
     text = r.text
@@ -1002,6 +1002,19 @@ def stop_readme(args, old_stdout):
     print("")
 
 
+class BooleanAction(argparse.Action):
+    """
+    Class that supports both --option and --no-option.
+    https://thisdataguy.com/2017/07/03/no-options-with-argparse-and-python/
+    """
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        super(BooleanAction, self).__init__(option_strings, dest, nargs=0, **kwargs)
+ 
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, False if option_string.startswith('--no') else True)
+
+
+
 def parse_options(conf):
     """Set up all of the option parsing"""
     conf = {} if conf is None else conf
@@ -1128,7 +1141,8 @@ def parse_options(conf):
         default=conf.get("verbose", 0),
     )
     grp_other.add_argument(
-        "--dots", help="Print a dot for each web page accessed.", action="store_true", default=conf.get("dots")
+        "--dots", "--no-dots", help="Print a dot for each web page accessed.",
+        action=BooleanAction, default=conf.get("dots")
     )
     grp_other.add_argument("--extended-help", help="Show the preamble of the README", action="store_true")
 
