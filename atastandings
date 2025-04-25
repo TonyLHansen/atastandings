@@ -928,7 +928,7 @@ def print_readme_heading(print_example_preamble=True):
     |    `creative-weapons`,
     |    `x-treme-forms`,
     |    or `x-treme-weapons`.
-    |May be specified multiple times.
+    |May be specified multiple times, or as a list such as `--competiton 'forms,weapons'`.
     |
     |(Not all divisions have competitors in each state or province.
     |Also, color belt divisions will not show in the world standings list.)
@@ -967,13 +967,13 @@ def print_readme_heading(print_example_preamble=True):
     |where `item` is one of `location`, `place`, `points`, `region`, `division` or `code`.
     |The `region` is either the world "WORLDS" or the state or province name.
     |The code is the division code.
-    |This may be specified multiple times.
+    |This may be specified multiple times, or you may specify a list, as in `--omit 'location,place'`.
     |
     |* `--minimize item`, `-m item` -- Minimize information from the printouts,
     |where `item` is currently only `division`.
     |For `division`, a division such as `Forms Boys Color Belt 9 - 10 Years Old` would be minimized to just `Forms`.
     |        (The division code, which is usually printed as well, can be used to differentiate between divisions.)
-    |This may be specified multiple times.
+    |When there is more than `division` allowed, this may be specified multiple times or as a list.)
     |
     |## Web Cache
     |By default, `atastandings` will maintain a cache of the web sites, so that you can have faster response times
