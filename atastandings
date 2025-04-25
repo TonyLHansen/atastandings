@@ -17,15 +17,23 @@ import re
 import sys
 import time
 
-import requests
+# import requests
+import httpx
 import yaml
 
-EPILOG = "-W and -S can be used together, or separately. If neither -W nor -S are set, default to -W"
-WORLDBASE = "https://atamartialarts.com/events/tournament-standings/worlds-standings/"
-STATEBASE = "https://atamartialarts.com/events/tournament-standings/state-standings/"
+EPILOG = "-W and -S can be used together, or separately. If neither -W nor -S are set, the default is -W."
+ATABASE = "https://atamartialarts.com/events/tournament-standings/"
+WORLD_SUFFIX = "worlds-standings"
+WORLDBASE = f"{ATABASE}{WORLD_SUFFIX}/"
+STATE_SUFFIX = "state-standings"
+STATEBASE = f"{ATABASE}{STATE_SUFFIX}/"
+ZIP_SUFFIXES = [".bz2", ".gz", ""]
+CACHE_URL_PREFIX = "atastandings."
+
 NAME_SUFFIXES = ["jr.", "sr.", "i", "ii", "iii", "iv"]
 NAME_PREFIXES = ["van", "san", "de", "da", "los", "st.", "saint"]
 
+STANDINGS_DATE = {}
 
 RANDOM_WORDS = []
 USED_WORDS = []
@@ -82,9 +90,6 @@ SUPPRESSED_ARGUMENTS = [
     ("-o", "--output", True),
     ("-9", "--internal-checks", False),
 ]
-
-
-ZIP_SUFFIXES = [".bz2", ".gz", ""]
 
 
 def get_next_random_word():
@@ -160,6 +165,7 @@ def cache_stat(cachename):
     for suffix in ZIP_SUFFIXES:
         try:
             st = os.stat(cachename + suffix)
+            # print(f"found {cachename + suffix}")
             return (cachename + suffix, st)
         except FileNotFoundError:
             pass
@@ -184,7 +190,76 @@ def open_cache_write(args, cachename, mode="wt"):
     return open(cachename, mode)
 
 
-def get_url(args, url):
+def decode_url(cache_name):
+    """
+    From a cache_name, atastandings.<<encoded-url>>,
+    recreate the original URL.
+    Account for gz/bz2 suffixes
+    """
+    if cache_name.startswith(CACHE_URL_PREFIX):
+        cache_name = cache_name[len(CACHE_URL_PREFIX) :]
+    for suffix in ZIP_SUFFIXES:
+        if suffix and cache_name.endswith(suffix):
+            cache_name = cache_name[: -len(suffix)]
+            break
+
+    ret = []
+    i = 0
+    while i < len(cache_name):
+        if cache_name[i] == "_":
+            if cache_name[i + 1] == "_":
+                ret.append("_")
+                i += 2
+            else:
+                c = cache_name[i + 1 : i + 3]
+                # print(f"c={c}")
+                ic = int(c, 16)
+                # print(f"ic={ic}, chr(ic)={chr(ic)}")
+                ret.append(chr(ic))
+                i += 3
+        else:
+            ret.append(cache_name[i])
+            i += 1
+    return ATABASE + "".join(ret)
+
+
+def get_cache_name(url):
+    """
+    From a url, generate an encoded version.
+    Trim off the ATABASE.
+    Use encoding similar to url %-encoding on all special characters,
+    but with '_' instead of '%'.
+    """
+    sig_url = url[len(ATABASE) :]
+    ret = []
+
+    for c in sig_url:
+        if c == "_":
+            ret.append("__")
+        elif c not in "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            ret.append("_" + hex(ord(c)).replace("0x", ""))
+        else:
+            ret.append(c)
+
+    return "".join(ret)
+
+
+def expire_old_cache_file(args, cachename):
+    """
+    Go through the cache file variations and remove them all.
+    """
+    found = False
+    for sfx in ZIP_SUFFIXES:
+        try:
+            os.unlink(cachename + sfx)
+            found = True
+        except FileNotFoundError:
+            pass
+    if found and args.verbose:
+        print(f"{cachename} is too old -- removed", file=sys.stderr)
+
+
+def get_url(args, url, url_type):
     """
     Retrieve a URL. Exit with an error message if there is an error retrieving it.
     Return the body as an array of lines.
@@ -195,49 +270,91 @@ def get_url(args, url):
     Cache files older than 24 hours are automatically ignored.
     """
 
-    urlname = re.sub("[^a-zA-Z0-9_]", "", url)
-    cachename_base = f"{args.cache_directory}/atastandings.{urlname}"
+    urlname = get_cache_name(url)
+    cachename_base = f"{args.cache_directory}/{CACHE_URL_PREFIX}{urlname}"
 
     if not args.ignore_existing_cache:
         try:
             if args.verbose:
-                print(f"looking for {args.cache_directory}/atastandings.{urlname}", file=sys.stderr)
+                print(f"looking for {cachename_base}", file=sys.stderr)
 
             (cachename, st) = cache_stat(cachename_base)
-            if not args.cache_required:
-                if not args.ignore_cache_times and st is not None:
+            if not args.offline:
+                if not args.use_web_standings_dates and not args.ignore_cache_times and st is not None:
+                    if args.verbose:
+                        print(
+                            "not args.use_web_standings_dates and not args.ignore_cache_times and st is not None",
+                            file=sys.stderr,
+                        )
                     if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
-                        for sfx in ZIP_SUFFIXES:
-                            try:
-                                os.unlink(cachename + sfx)
-                            except FileNotFoundError:
-                                pass
                         if args.verbose:
-                            print(f"{cachename} is too old -- ignored", file=sys.stderr)
+                            print("\texpiring cache", file=sys.stderr)
+                        expire_old_cache_file(args, cachename)
 
             if args.dots:
-                print(".", end="", file=sys.stderr)
-                sys.stderr.flush()
+                print(".", end="", file=sys.stderr, flush=True)
 
             with open_cache_read(cachename) as fp:
                 text = fp.read()
-            return text.splitlines()
+
+            if not args.use_web_standings_dates or args.offline:
+                return (text.splitlines(), False)
+
+            cache_standings_date = get_standings_date(text)
+            if url_type in STANDINGS_DATE:
+                if args.verbose:
+                    print(f"url_type({url_type}) in {STANDINGS_DATE}")
+                    print(f"cache_standings_date={cache_standings_date}")
+                if STANDINGS_DATE[url_type] == cache_standings_date:
+                    if args.verbose:
+                        print("dates are ==")
+                    if args.dots:
+                        print(",", end="", file=sys.stderr, flush=True)
+                    return (text.splitlines(), False)
+
+            # else, ignore the cache
 
         except FileNotFoundError:
+            # no cache
             pass
 
-    if args.cache_required:
+    if args.offline:
         sys.exit(f"Cannot find cache for {url}")
 
+    if args.verbose:
+        print("getting url")
+
     if args.dots:
-        print(":", end="", file=sys.stderr)
-        sys.stderr.flush()
+        print(":", end="", file=sys.stderr, flush=True)
 
     if args.verbose:
         print(f"getting url={url}", file=sys.stderr)
-    r = requests.get(url, timeout=90)
+    try:
+        # r = requests.get(url, timeout=90)
+        r = httpx.get(url)
+    except httpx.ReadTimeout:
+        sys.exit(f"Timeout for {url}")
+    except httpx.ConnectError:
+        sys.exit(f"ConnectError for {url}")
+    except httpx.ReadError:
+        sys.exit(f"ReadError for {url}")
+    except httpx.RequestError as e:
+        sys.exit(f"HTTP Exception for {e.request.url} - {e}")
+    except httpx.HTTPError as e:
+        sys.exit(f"HTTP Exception for {e.request.url} - {e}")
+    # except requests.exceptions.ReadTimeout:
+    #    sys.exit(f"Timeout for {url}")
+    # except (requests.exceptions.ConnectionError:
+    #    sys.exit(f"ConnectionError for {url}")
+    except Exception as e:
+        sys.exit(f"Other conn error for {url}: {type(e)}: {e}")
+
     if r.status_code >= 300:
         sys.exit(f"Accessing {url} returned the status code {r.status_code}")
+
+    web_standings_date = get_standings_date(r.text)
+    if url_type not in STANDINGS_DATE:
+        STANDINGS_DATE[url_type] = web_standings_date
 
     if args.verbose > 2:
         print(f"page={r.text}", file=sys.stderr)
@@ -250,7 +367,7 @@ def get_url(args, url):
         os.rename(f"{cachename_base}{suffix}.tmp", f"{cachename_base}{suffix}")
     text = r.text
 
-    return text.splitlines()
+    return (text.splitlines(), True)
 
 
 def clean_cache(args):
@@ -293,7 +410,7 @@ def join_li_td_tr(lines):
 
 
 def fgrep(s, lines):
-    """search for lines that have the given string and return that array"""
+    """Search for lines that have the given string and return that array"""
     newlines = []
     for l in lines:
         if s in l:
@@ -302,7 +419,7 @@ def fgrep(s, lines):
 
 
 def get_code(l):
-    """extract code=ABC from a line"""
+    """Extract code=ABC from a line"""
     l = re.sub("^.*code=", "code=", l)
     l = re.sub('".*$', "", l)
     return l
@@ -313,9 +430,10 @@ def fix_html(s):
     return html.unescape(s)
 
 
-def get_codes(args, url):
+def get_codes(args, url, url_type):
     """Retrieve a URL. Retrieve the list of codes as an array of [division-code, division-name]"""
-    lines = fgrep("code=", join_li_td_tr(get_url(args, url)))
+    (lines, _) = get_url(args, url, url_type)
+    lines = fgrep("code=", join_li_td_tr(lines))
     nl = []
     for l in lines:
         nl.append([get_code(l), strip_html(l).replace("VIEW", "")])
@@ -328,9 +446,9 @@ def print_lines(lines):
         print(l)
 
 
-def get_info(args, code, region, url, border):
+def get_info(args, code, region, url, border, url_type):  # pylint: disable=too-many-positional-arguments
     """Get the standings from this url"""
-    lines = get_url(args, url)
+    (lines, _) = get_url(args, url, url_type)
     lines = trim_border(lines, border)
     dispcode = code[0].split("=")[1]
     for i, val in enumerate(lines):
@@ -566,7 +684,7 @@ def print_info_by_division(args, info):
 def print_info(args, info):
     """Given a structure'd set of standings, print it appropriately"""
     if args.dots:
-        print("", file=sys.stderr)
+        print("", file=sys.stderr, flush=True)
     if args.by_person or args.by_person_with_divisions:
         print_info_by_name(args, info)
     else:
@@ -578,7 +696,7 @@ def print_worlds(args):
     if args.division_code:
         codes = [[f"code={code}", ""] for code in args.division_code]
     else:
-        codes = get_codes(args, WORLDBASE)
+        codes = get_codes(args, WORLDBASE, "world")
 
     if args.list_division_codes:
         print("WORLD STANDINGS DIVISIONS")
@@ -593,7 +711,7 @@ def print_worlds(args):
 
         all_info = []
         for code in codes:
-            info = get_info(args, code, "WORLDS", f"{WORLDBASE}?{code[0]}", "INFO")
+            info = get_info(args, code, "WORLDS", f"{WORLDBASE}?{code[0]}", "INFO", "world")
             all_info += info
         all_info = trim_info(args, all_info)
         print_info(args, all_info)
@@ -631,7 +749,7 @@ def print_districts(args, need_nl):
                 codeset = set()
                 for state in DISTRICTS[district]:
                     country = get_country(state)
-                    ncodes = get_codes(args, f"{STATEBASE}?country={country}&state={state}")
+                    ncodes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", "state")
                     for x in ncodes:
                         if x[0] not in codeset:
                             codes.append(x)
@@ -654,11 +772,16 @@ def print_districts(args, need_nl):
                 country = get_country(state)
                 if not args.division_code:
                     country = get_country(state)
-                    codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}")
+                    codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", "state")
 
                 for code in codes:
                     info = get_info(
-                        args, code, district, f"{STATEBASE}?country={country}&state={state}&{code[0]}", "CONTENT"
+                        args,
+                        code,
+                        district,
+                        f"{STATEBASE}?country={country}&state={state}&{code[0]}",
+                        "CONTENT",
+                        "state",
                     )
                     info = trim_info(args, info, place_only=True)
                     for i in info:
@@ -703,7 +826,7 @@ def print_states(args, need_nl):
         if args.division_code:
             codes = [[f"code={code}", ""] for code in args.division_code]
         else:
-            codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}")
+            codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", "state")
 
         if args.list_division_codes:
             print(f"STATE STANDINGS DIVISIONS FOR {state}")
@@ -718,7 +841,9 @@ def print_states(args, need_nl):
 
             all_info = []
             for code in codes:
-                info = get_info(args, code, state, f"{STATEBASE}?country={country}&state={state}&{code[0]}", "CONTENT")
+                info = get_info(
+                    args, code, state, f"{STATEBASE}?country={country}&state={state}&{code[0]}", "CONTENT", "state"
+                )
                 all_info += info
             all_info = trim_info(args, all_info)
             print_info(args, all_info)
@@ -749,7 +874,7 @@ def print_readme_heading(print_example_preamble=True):
     |
     |All `atastandings` options are specified using two hyphens (`--`) and the option name,
     |possibly followed by an argument such as a search string or a state/province abbreviation.
-    |There are also short versions of most of the options that are a single hyphen and a single lettter.
+    |There are also short versions of many of the options that are a single hyphen and a single lettter.
     |
     |## Worlds, District and State Standings
     |The default for `atastandings` is to search the world standings.
@@ -765,9 +890,16 @@ def print_readme_heading(print_example_preamble=True):
     |    `Southeast`,
     |    `South`,
     |    or `Southwest`.
-    |This may be specified multiple times.
-    |* `--state ABBREV`, `-S ABBREV` -- search the given state or province, using the two character state or province postoffice code.
-    |This may be specified multiple times.
+    |
+    |This may be specified multiple times. You may also specify a list, as in `--district 'Midwest,South'.
+    |Or you may specify `--all-districts`.
+    |
+    |* `--state ABBREV`, `-S ABBREV`, `--province ABBREV` -- search the given state or province,
+    |using the two character state or province postoffice code. (`--state` and `--province` are
+    |treated identically in the code.)
+    |
+    |This may be specified multiple times. You may also specify a list, as in `--state 'CA,AK'.
+    |Or you may specify `--all-states`.
     |
     |For example, both `atastandings` and  `atastandings --worlds` will search the world standings.
     |`atastandings --district northeast` will search the Northeast district.
@@ -783,7 +915,7 @@ def print_readme_heading(print_example_preamble=True):
     |To find out what the division codes are, you can get a list:
     |
     |* `--list-division-codes`, `-l` -- list all of the division codes.
-    |This  can be combined with  `--district name`, or `--state STATE-ABBREV` to get the division codes specific to a state/province.
+    |This  can be combined with `--district name`, or `--state STATE-ABBREV` to get the division codes specific to a state/province.
     |
     |* `--division-code code`, `-c code` -- Restrict the output to the specified diision code.
     |This may be specified multiple times.
@@ -849,6 +981,13 @@ def print_readme_heading(print_example_preamble=True):
     |Most of the time you can ignore that the cache is being used, as cache files older than 24 hours are automatically ignored.
     |However power users might want additional controls.
     |
+    |There are also is a separate form of cache verification that downloads the first state or world
+    |file for the 'updated on' value. If the value is the same in each state/world standings file,
+    |the state/world cache file will not be downloaded. THis type of cache verification is
+    |enabled using `-w`/`--use-web-standings-dates`.
+    |
+    |The `-T`/`--ignore-cache-times` can be used if you wish to turn off caching.
+    |
     |* `--cache-directory PATH`, `-C PATH` -- This will set the cache directory to the given path.
     |It defaults to an os-specific temp directory.
     |* `--clean-cache` -- Sometimes you might wish to clean up all of the cached files.
@@ -859,12 +998,23 @@ def print_readme_heading(print_example_preamble=True):
     |* `--do-not-write-cache`, `-D` -- Sometimes you might want the cache files to not be written.
     |For example, you can use this option if there are problems on your system with the cache directory.
     |
-    |        Note: Not using the cache will give you slow response times each time you run the program because of the web lookups.
+    |You can use `--update-cache` to check the cached files and update them, without doing any further
+    |analysis.
+    |
+    |By default, the cache files are stored as read from the web. However, the `--gzip-cache` and
+    |`--bzip2-cache` options cause the cache files to be compressed. The `gzip` algorithm is slightly
+    |faster than the `bzip2` algorithm, but the latter creates slightly smaller files.
+    |
+    |Another option is `--offline`, which causes the program to ONLY run via the cache and to give
+    |an error if a required cache file is not found.
+    |
+    |        Note: Not using the cache will give you slow response times every time you run the program because of the web lookups.
     |
     |
     |## Getting Help and Miscellaneous Other Options
     |
-    |* `--dots`, `-.` -- Dots or colons will be printed for each file that is being retrieved from the web (":") or the cache (".".
+    |* `--dots`, `-.` -- Dots or colons will be printed for each file that is being retrieved from the
+    |web (":"), the time-based cache (".") or the updated-on date (",").
     |
     |Finally, you can ask for help on what options are available:
     |
@@ -890,6 +1040,13 @@ def print_readme_heading(print_example_preamble=True):
     |    dots: false
     |    gzip-cache: false
     |    bzip2-cache: false
+    |    offline: false
+    |    ignore-cache-times: false
+    |    use-web-standings-dates: false
+    |
+    |Some options (such as `--dots`) have `--no-` versions that allow the option to be turned on
+    |in the configuration file, and then be turned off from the command line. The options that current
+    |have `--no-` options to be specified are: `--no-dots`, `--no-gzip-cache` and `--no-bzip2-cache`.
     |
     |""".replace(
             "    |", ""
@@ -1007,21 +1164,23 @@ class BooleanAction(argparse.Action):
     Class that supports both --option and --no-option.
     https://thisdataguy.com/2017/07/03/no-options-with-argparse-and-python/
     """
-    def __init__(self, option_strings, dest, nargs=None, **kwargs):
-        super(BooleanAction, self).__init__(option_strings, dest, nargs=0, **kwargs)
- 
-    def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, False if option_string.startswith('--no') else True)
 
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        super().__init__(option_strings, dest, nargs=0, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, not option_string.startswith("--no"))
 
 
 def parse_options(conf):
     """Set up all of the option parsing"""
     conf = {} if conf is None else conf
+
     parser = argparse.ArgumentParser(description=__doc__, epilog=EPILOG)
     grp_search = parser.add_argument_group("Search Options")
     grp_search.add_argument("-W", "--worlds", help="Search the world standings.", action="store_true")
-    grp_search.add_argument(
+    grp_search_state = grp_search.add_mutually_exclusive_group()
+    grp_search_state.add_argument(
         "-S",
         "--state",
         "--province",
@@ -1029,9 +1188,14 @@ def parse_options(conf):
         type=str,
         action="append",
     )
-    grp_search.add_argument(
+    grp_search_state.add_argument(
+        "--all-states", "--all-provinces", help="Search all states and provinces.", action="store_true"
+    )
+    grp_search_district = grp_search.add_mutually_exclusive_group()
+    grp_search_district.add_argument(
         "-d", "--district", help="District to search. May be specified multiple times.", type=str, action="append"
     )
+    grp_search_district.add_argument("--all-districts", help="Search all districts.", action="store_true")
     grp_search.add_argument("-s", "--search", help="String to search for in the standings.", type=str, default="")
     grp_search.add_argument(
         "-k",
@@ -1056,11 +1220,14 @@ def parse_options(conf):
     )
     grp_search.add_argument(
         "--competition",
-        help=f"Only print this competition, one of {COMPETITIONS}. May be specified multiple times.",
+        help=f"Only print this competition, one of {list(COMPETITIONS.values())}. May be specified multiple times.",
         type=str,
         action="append",
     )
 
+    ################
+    # output options
+    ################
     grp_output = parser.add_argument_group("Output Options")
     grp_output.add_argument(
         "-b", "--by-person", help="Print the standings by name", action="store_true", default=conf.get("by-person")
@@ -1096,6 +1263,9 @@ def parse_options(conf):
         default=conf.get("list-division-codes"),
     )
 
+    ################
+    # cache control options
+    ################
     grp_cache = parser.add_argument_group("Cache Control Options")
     grp_cache.add_argument(
         "-C",
@@ -1112,14 +1282,25 @@ def parse_options(conf):
         action="store_true",
     )
     grp_cache_inc.add_argument(
-        "-R",
-        "--cache-required",
         "--offline",
         help="Run offline using the cache. (Implies -T/--ignore-cache-times)",
         action="store_true",
+        default=conf.get("offline", False),
     )
-    grp_cache.add_argument(
-        "-T", "--ignore-cache-times", help="Do not timeout any existing cache of the web pages.", action="store_true"
+    grp_cache_time = grp_cache.add_mutually_exclusive_group()
+    grp_cache_time.add_argument(
+        "-T",
+        "--ignore-cache-times",
+        help="Do not timeout any existing cache of the web pages.",
+        action="store_true",
+        default=conf.get("ignore-cache-times", False),
+    )
+    grp_cache_time.add_argument(
+        "-w",
+        "--use-web-standings-dates",
+        help="Verify 'standings updated' date in the file against the web page.",
+        action="store_true",
+        default=conf.get("use-web-standings-dates", False),
     )
     grp_cache.add_argument(
         "-D", "--do-not-write-cache", help="Do not write a cache of the web pages.", action="store_true"
@@ -1129,9 +1310,24 @@ def parse_options(conf):
     )
 
     grp_cache_zip = grp_cache.add_mutually_exclusive_group()
-    grp_cache_zip.add_argument("--gzip-cache", help="gzip all cache files when saving", action="store_true")
-    grp_cache_zip.add_argument("--bzip2-cache", help="bzip2 all cache files when saving", action="store_true")
+    grp_cache_zip.add_argument(
+        "--gzip-cache",
+        "--no-gzip-cache",
+        help="Save cache files using gzip",
+        action=BooleanAction,
+        default=conf.get("gzip-cache", False),
+    )
+    grp_cache_zip.add_argument(
+        "--bzip2-cache",
+        "--no-bzip2-cache",
+        help="Save cache files using bzip2",
+        action=BooleanAction,
+        default=conf.get("bzip2-cache", False),
+    )
 
+    ################
+    # other options
+    ################
     grp_other = parser.add_argument_group("Other Options")
     grp_other.add_argument(
         "-v",
@@ -1141,11 +1337,18 @@ def parse_options(conf):
         default=conf.get("verbose", 0),
     )
     grp_other.add_argument(
-        "--dots", "--no-dots", help="Print a dot for each web page accessed.",
-        action=BooleanAction, default=conf.get("dots")
+        "--dots",
+        "--no-dots",
+        help="Print a dot, comma or semi-colon for each web page accessed.",
+        action=BooleanAction,
+        default=conf.get("dots"),
     )
     grp_other.add_argument("--extended-help", help="Show the preamble of the README", action="store_true")
+    grp_other.add_argument("--update-cache", help="Update all cached files based.", action="store_true")
 
+    ################
+    # "invisible" options
+    ################
     for a, arg, has_option in SUPPRESSED_ARGUMENTS:
         if has_option:
             grp_other.add_argument(a, arg, help=argparse.SUPPRESS, type=str)
@@ -1205,6 +1408,65 @@ def check_global_arrays():
     find_duplicates("CA_PROVINCES+US_STATES", CA_PROVINCES + US_STATES)
 
 
+def get_standings_date(text):
+    """
+    Search a web page for the text
+    'Standings updated on mm/dd/yyyy'
+    and return the date.
+    """
+    m = re.search("Standings updated on ([^<]*)<", text)
+    return m.group(1) if m else None
+
+
+def update_cache_worldstate(args, base, standing_type):
+    """
+    Search for matching standings files in the cache directory.
+    For each matching standings files, update as needed.
+    """
+    print(f"update_cache for {standing_type}")
+
+    # Force various options
+    args.ignore_existing_cache = False
+    args.offline = False
+
+    g = f"{args.cache_directory}/atastandings.{base}*"
+    found_updated = False
+
+    for fname in glob.glob(g):
+        bfname = os.path.basename(fname)
+        url = decode_url(bfname)
+        (_, updated) = get_url(args, url, standing_type)
+        print("+" if updated else "-", end="", file=sys.stderr)
+        if updated:
+            found_updated = True
+    print()
+    return found_updated
+
+
+def update_cache(args):
+    """
+    Search for standings files in the cache directory.
+    Look first for world standings files, then for state standings files.
+    """
+    s = update_cache_worldstate(args, f"{STATE_SUFFIX}", "state")
+    w = update_cache_worldstate(args, f"{WORLD_SUFFIX}", "world")
+    return (s, w)
+
+
+def expand_comma_lists(lst):
+    """
+    Given a list where some elements look like AB and others like CD,EF,...,
+    create a new list AB,CD,EF,...
+    """
+    if lst is None:
+        return lst
+    ret = []
+    for l in lst:
+        for nl in l.split(","):
+            ret.append(nl.strip())
+    return ret
+
+
 def main():
     """main function"""
     conf = get_configuration()
@@ -1217,20 +1479,34 @@ def main():
         print("Internal checks complete")
         sys.exit()
 
+    if args.update_cache:
+        (state_updated, world_updated) = update_cache(args)
+        if state_updated:
+            print("Cached state files were updated")
+        if world_updated:
+            print("Cached world files were updated")
+        sys.exit(state_updated + 2 * world_updated)
+
     # check the values of the --omit option
     check_option(args.omit, "-O/--omit", OMIT_CHOICES)
     # check the values of the --minimize option
     check_option(args.minimize, "-m/--minimize", MINIMIZE_CHOICES)
     # check the values of the --district option
+    if args.all_districts:
+        args.district = DISTRICTS.keys()
     if args.district:
+        args.district = expand_comma_lists(args.district)
         # Re-capitalize the district names
-        for i, district in args.district:
-            args.district[i] = "-".join([x.capitalize() for x in district[i].split("-")])
+        for i, district in enumerate(args.district):
+            args.district[i] = "-".join([x.capitalize() for x in district.split("-")])
         check_option(args.district, "-d/--district", DISTRICTS.keys())
     # check the values of the --competition option
     check_option(args.competition, "--competiton", COMPETITIONS.keys())
     # The web site allows for both lower and upper case. Upper case displays better.
+    if args.all_states:
+        args.state = US_STATES + CA_PROVINCES
     upper_case(args.state)
+    args.state = expand_comma_lists(args.state)
     check_option(args.state, "-S/--state", US_STATES + CA_PROVINCES)
 
     if args.extended_help:
