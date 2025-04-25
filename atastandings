@@ -329,25 +329,40 @@ def get_url(args, url, url_type):
 
     if args.verbose:
         print(f"getting url={url}", file=sys.stderr)
-    try:
-        # r = requests.get(url, timeout=90)
-        r = httpx.get(url)
-    except httpx.ReadTimeout:
-        sys.exit(f"Timeout for {url}")
-    except httpx.ConnectError:
-        sys.exit(f"ConnectError for {url}")
-    except httpx.ReadError:
-        sys.exit(f"ReadError for {url}")
-    except httpx.RequestError as e:
-        sys.exit(f"HTTP Exception for {e.request.url} - {e}")
-    except httpx.HTTPError as e:
-        sys.exit(f"HTTP Exception for {e.request.url} - {e}")
+    r = None
+    errmsg = None
+    for i in range(args.connection_count):
+        try:
+            r = httpx.get(url)
+        except httpx.ReadTimeout:
+            errmsg = f"Timeout for {url}"
+        except httpx.ConnectError:
+            errmsg = f"ConnectError for {url}"
+        except httpx.ReadError:
+            errmsg = f"ReadError for {url}"
+        except httpx.RequestError as e:
+            errmsg = f"HTTP Exception for {e.request.url} - {e}"
+        except httpx.HTTPError as e:
+            errmsg = f"HTTP Exception for {e.request.url} - {e}"
+        except Exception as e:
+            errmsg = f"Other conn error for {url}: {type(e)}: {e}"
+
+        if r:
+            break
+
+        print(errmsg)
+        errmsg = None
+        time.sleep(args.retry_interval)
+
+    if r is None:
+        sys.exit(1)
+
+    # try:
+    #     r = requests.get(url, timeout=90)
     # except requests.exceptions.ReadTimeout:
-    #    sys.exit(f"Timeout for {url}")
+    #     sys.exit(f"Timeout for {url}")
     # except (requests.exceptions.ConnectionError:
-    #    sys.exit(f"ConnectionError for {url}")
-    except Exception as e:
-        sys.exit(f"Other conn error for {url}: {type(e)}: {e}")
+    #     sys.exit(f"ConnectionError for {url}")
 
     if r.status_code >= 300:
         sys.exit(f"Accessing {url} returned the status code {r.status_code}")
@@ -975,6 +990,14 @@ def print_readme_heading(print_example_preamble=True):
     |        (The division code, which is usually printed as well, can be used to differentiate between divisions.)
     |When there is more than `division` allowed, this may be specified multiple times or as a list.)
     |
+    |## Connection Options
+    |When making connections there will be an occasional network failure. From the command line, you
+    |can easily restart the command. But if being run in the background, a better strategy is to
+    |retry the connection. To support this, you can set `--connection-count` to a value such as 10 with
+    |a `--retry-interval` value such as `30` (seconds). When the `connection-count` is reached, the
+    |program will exist with an error message. (Note: the `connection-count` restarts for each web
+    |page requested.
+    |
     |## Web Cache
     |By default, `atastandings` will maintain a cache of the web sites, so that you can have faster response times
     |when you run the program multiple times.
@@ -1043,10 +1066,18 @@ def print_readme_heading(print_example_preamble=True):
     |    offline: false
     |    ignore-cache-times: false
     |    use-web-standings-dates: false
+    |    connection-count: 1
+    |    retry-interval: 30
     |
     |Some options (such as `--dots`) have `--no-` versions that allow the option to be turned on
-    |in the configuration file, and then be turned off from the command line. The options that current
-    |have `--no-` options to be specified are: `--no-dots`, `--no-gzip-cache` and `--no-bzip2-cache`.
+    |in the configuration file, and then be turned off from the command line. The options that currently
+    |allow `--no-` options to be specified are: `--no-dots`, `--no-gzip-cache`, `--no-bzip2-cache`,
+    |and `--no-offline`.
+    |
+    |## Configuration environment variable
+    |The options in a configuration file are also settable in an ATASTANDINGS environment variable.
+    |Use the same format as the configuration file, but separate the variables with a semi-colon ("`;`"),
+    |as in `ATASTANDINGS='dots: true; list-division-codes: true'`.
     |
     |""".replace(
             "    |", ""
@@ -1264,6 +1295,15 @@ def parse_options(conf):
     )
 
     ################
+    # connection control options
+    ################
+    grp_conn = parser.add_argument_group("Connection Control Options")
+    grp_conn.add_argument("--connection-count", help="Number of connection attempts per web page",
+                          type=int, default=conf.get("connection-count", 1))
+    grp_conn.add_argument("--retry-interval", help="Seconds between connection attempts when retrying",
+                          type=int, default=conf.get("retry-interval", 30))
+
+    ################
     # cache control options
     ################
     grp_cache = parser.add_argument_group("Cache Control Options")
@@ -1283,8 +1323,9 @@ def parse_options(conf):
     )
     grp_cache_inc.add_argument(
         "--offline",
+        "--no-offline",
         help="Run offline using the cache. (Implies -T/--ignore-cache-times)",
-        action="store_true",
+        action=BooleanAction,
         default=conf.get("offline", False),
     )
     grp_cache_time = grp_cache.add_mutually_exclusive_group()
@@ -1389,6 +1430,25 @@ def get_configuration():
     return {}
 
 
+def add_environment(conf):
+    """
+    Check the $ATASTANDINGS environment variable for configuration seetings.
+    Use an encoding of yaml with ";" representing newlines, as in:
+
+    dots: true; use-web-standings-dates: false
+    """
+    atastandings = os.environ.get("ATASTANDINGS")
+    if atastandings is None:
+        return
+
+    try:
+        conf2 = yaml.safe_load(re.sub("; *", "\n", atastandings))
+    except Exception as e:
+        sys.exit(f"Error parsing {atastandings}: {e}")
+
+    for k, v in conf2.items():
+        conf[k] = v
+
 def find_duplicates(nm, arr):
     """Look for duplicates in the list"""
     s = set()
@@ -1470,6 +1530,7 @@ def expand_comma_lists(lst):
 def main():
     """main function"""
     conf = get_configuration()
+    add_environment(conf)
     args = parse_options(conf)
 
     # check the data
