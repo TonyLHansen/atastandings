@@ -1488,9 +1488,13 @@ def main():
         sys.exit(state_updated + 2 * world_updated)
 
     # check the values of the --omit option
+    args.omit = expand_comma_lists(args.omit)
     check_option(args.omit, "-O/--omit", OMIT_CHOICES)
+
     # check the values of the --minimize option
+    args.minimize = expand_comma_lists(args.minimize)
     check_option(args.minimize, "-m/--minimize", MINIMIZE_CHOICES)
+
     # check the values of the --district option
     if args.all_districts:
         args.district = DISTRICTS.keys()
@@ -1500,9 +1504,13 @@ def main():
         for i, district in enumerate(args.district):
             args.district[i] = "-".join([x.capitalize() for x in district.split("-")])
         check_option(args.district, "-d/--district", DISTRICTS.keys())
+
     # check the values of the --competition option
+    args.competition = expand_comma_lists(args.competition)
     check_option(args.competition, "--competiton", COMPETITIONS.keys())
-    # The web site allows for both lower and upper case. Upper case displays better.
+
+    # check the values of the --state/--province option
+    # The web site allows for both lower and upper case for states. Upper case displays better.
     if args.all_states:
         args.state = US_STATES + CA_PROVINCES
     upper_case(args.state)
