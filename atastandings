@@ -259,64 +259,79 @@ def expire_old_cache_file(args, cachename):
         print(f"{cachename} is too old -- removed", file=sys.stderr)
 
 
-def get_url(args, url, url_type):
+def get_cache(args, cachename_base, url_type):
     """
-    Retrieve a URL. Exit with an error message if there is an error retrieving it.
+    Retrieve a URL from the cache.
     Return the body as an array of lines.
 
-    Note that this uses a cache, so that each web page is visited exactly once.
+    The cache is designed so that most web pages are visited exactly once.
     This speeds up running the program multiple times in a row.
     There are options to ignore, disable and clean the cache.
-    Cache files older than 24 hours are automatically ignored.
+    With time-based caching, cache files older than 24 hours are automatically ignored.
+    With use-web-standings-dates, the first state/world file is retrieved from the web and
+    examined for the "Standings updated on mm/dd/yyyy" date. Subsequent cached files are
+    checked for their dates and only re-retrieved if the dates are different.
     """
+    try:
+        if args.verbose:
+            print(f"looking for {cachename_base}", file=sys.stderr)
 
+        (cachename, st) = cache_stat(cachename_base)
+        if not args.offline:
+            if not args.use_web_standings_dates and not args.ignore_cache_times and st is not None:
+                if args.verbose:
+                    print(
+                        "not args.use_web_standings_dates and not args.ignore_cache_times and st is not None",
+                        file=sys.stderr,
+                    )
+                if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
+                    if args.verbose:
+                        print("\texpiring cache", file=sys.stderr)
+                    expire_old_cache_file(args, cachename)
+
+        if args.dots:
+            print(".", end="", file=sys.stderr, flush=True)
+
+        with open_cache_read(cachename) as fp:
+            text = fp.read()
+
+        if not args.use_web_standings_dates or args.offline:
+            return (text.splitlines(), False)
+
+        cache_standings_date = get_standings_date(text)
+        if url_type in STANDINGS_DATE:
+            if args.verbose:
+                print(f"url_type({url_type}) in {STANDINGS_DATE}")
+                print(f"cache_standings_date={cache_standings_date}")
+            if STANDINGS_DATE[url_type] == cache_standings_date:
+                if args.verbose:
+                    print("dates are ==")
+                if args.dots:
+                    print(",", end="", file=sys.stderr, flush=True)
+                return (text.splitlines(), False)
+
+        # else, ignore the cache
+
+    except FileNotFoundError:
+        # no cache
+        pass
+
+    return (None, True)
+
+
+def get_url(args, url, url_type):
+    """
+    Retrieve a URL, either from the cache or from web.
+    Exit with an error message if there is an error retrieving it.
+    Return the body as an array of lines.
+    """
     urlname = get_cache_name(url)
     cachename_base = f"{args.cache_directory}/{CACHE_URL_PREFIX}{urlname}"
 
     if not args.ignore_existing_cache:
-        try:
-            if args.verbose:
-                print(f"looking for {cachename_base}", file=sys.stderr)
-
-            (cachename, st) = cache_stat(cachename_base)
-            if not args.offline:
-                if not args.use_web_standings_dates and not args.ignore_cache_times and st is not None:
-                    if args.verbose:
-                        print(
-                            "not args.use_web_standings_dates and not args.ignore_cache_times and st is not None",
-                            file=sys.stderr,
-                        )
-                    if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
-                        if args.verbose:
-                            print("\texpiring cache", file=sys.stderr)
-                        expire_old_cache_file(args, cachename)
-
-            if args.dots:
-                print(".", end="", file=sys.stderr, flush=True)
-
-            with open_cache_read(cachename) as fp:
-                text = fp.read()
-
-            if not args.use_web_standings_dates or args.offline:
-                return (text.splitlines(), False)
-
-            cache_standings_date = get_standings_date(text)
-            if url_type in STANDINGS_DATE:
-                if args.verbose:
-                    print(f"url_type({url_type}) in {STANDINGS_DATE}")
-                    print(f"cache_standings_date={cache_standings_date}")
-                if STANDINGS_DATE[url_type] == cache_standings_date:
-                    if args.verbose:
-                        print("dates are ==")
-                    if args.dots:
-                        print(",", end="", file=sys.stderr, flush=True)
-                    return (text.splitlines(), False)
-
-            # else, ignore the cache
-
-        except FileNotFoundError:
-            # no cache
-            pass
+        (textlines, cret) = get_cache(args, cachename_base, url_type)
+        if textlines:
+            return (textlines, cret)
 
     if args.offline:
         sys.exit(f"Cannot find cache for {url}")
@@ -327,11 +342,12 @@ def get_url(args, url, url_type):
     if args.dots:
         print(":", end="", file=sys.stderr, flush=True)
 
-    if args.verbose:
-        print(f"getting url={url}", file=sys.stderr)
     r = None
     errmsg = None
+    if args.verbose:
+        print(f"getting url={url}", file=sys.stderr)
     for i in range(args.connection_count):
+        errmsg = None
         try:
             r = httpx.get(url)
         except httpx.ReadTimeout:
@@ -350,19 +366,12 @@ def get_url(args, url, url_type):
         if r:
             break
 
-        print(errmsg)
+        print(f"#{i}: {errmsg}")
         errmsg = None
         time.sleep(args.retry_interval)
 
     if r is None:
         sys.exit(1)
-
-    # try:
-    #     r = requests.get(url, timeout=90)
-    # except requests.exceptions.ReadTimeout:
-    #     sys.exit(f"Timeout for {url}")
-    # except (requests.exceptions.ConnectionError:
-    #     sys.exit(f"ConnectionError for {url}")
 
     if r.status_code >= 300:
         sys.exit(f"Accessing {url} returned the status code {r.status_code}")
@@ -1298,10 +1307,18 @@ def parse_options(conf):
     # connection control options
     ################
     grp_conn = parser.add_argument_group("Connection Control Options")
-    grp_conn.add_argument("--connection-count", help="Number of connection attempts per web page",
-                          type=int, default=conf.get("connection-count", 1))
-    grp_conn.add_argument("--retry-interval", help="Seconds between connection attempts when retrying",
-                          type=int, default=conf.get("retry-interval", 30))
+    grp_conn.add_argument(
+        "--connection-count",
+        help="Number of connection attempts per web page",
+        type=int,
+        default=conf.get("connection-count", 1),
+    )
+    grp_conn.add_argument(
+        "--retry-interval",
+        help="Seconds between connection attempts when retrying",
+        type=int,
+        default=conf.get("retry-interval", 30),
+    )
 
     ################
     # cache control options
@@ -1449,6 +1466,7 @@ def add_environment(conf):
     for k, v in conf2.items():
         conf[k] = v
 
+
 def find_duplicates(nm, arr):
     """Look for duplicates in the list"""
     s = set()
@@ -1527,6 +1545,12 @@ def expand_comma_lists(lst):
     return ret
 
 
+def check_positive(val, name):
+    """Check the value make sure it is >= 1."""
+    if val < 1:
+        sys.exit(f"{sys.argv[0]}: error: error {name} must be a positive value, not {val}")
+
+
 def main():
     """main function"""
     conf = get_configuration()
@@ -1577,6 +1601,10 @@ def main():
     upper_case(args.state)
     args.state = expand_comma_lists(args.state)
     check_option(args.state, "-S/--state", US_STATES + CA_PROVINCES)
+
+    # check the values of the connection settings
+    check_positive(args.connection_count, "--connection-count")
+    check_positive(args.retry_interval, "--retry-interval")
 
     if args.extended_help:
         print_readme_heading(False)
