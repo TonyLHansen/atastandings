@@ -371,7 +371,10 @@ def get_url(args, url, url_type):
         time.sleep(args.retry_interval)
 
     if r is None:
-        sys.exit(1)
+        if args.connection_count > 1:
+            sys.exit("Connection count reached")
+        else:
+            sys.exit(1)
 
     if r.status_code >= 300:
         sys.exit(f"Accessing {url} returned the status code {r.status_code}")
@@ -1004,7 +1007,7 @@ def print_readme_heading(print_example_preamble=True):
     |can easily restart the command. But if being run in the background, a better strategy is to
     |retry the connection. To support this, you can set `--connection-count` to a value such as 10 with
     |a `--retry-interval` value such as `30` (seconds). When the `connection-count` is reached, the
-    |program will exist with an error message. (Note: the `connection-count` restarts for each web
+    |program will exit with an error message. (Note: the `connection-count` restarts for each web
     |page requested.
     |
     |## Web Cache

@@ -1,16 +1,12 @@
-l: ab-l ag-l at-l
-ab-l:
-	./atastandings -R -C $$PWD/test-files-bz2 -l
-ag-l:
-	./atastandings -R -C $$PWD/test-files-gz -l
-at-l:
-	./atastandings -R -C $$PWD/test-files -l
-
+none:
+	@echo make test - run a series of tests
+	@echo make readme - regenerate the README.md file
+	@echo make run-black run-pylint - run black and pylint
 
 test:
 	./atastandings --help # > /dev/null
 	./atastandings -l
-	./atastandings -I -l -S nj
+	if grep '^offline:' .atastandings.ini > /dev/null; then ./atastandings -l -S nj; else ./atastandings -I -l -S nj; fi
 	./atastandings -S nj
 	./atastandings -S nj -p 3
 	./atastandings -B -W -S nj -s parlin -p 10
@@ -28,6 +24,9 @@ test:
 	./atastandings -S nj -s parlin -p 10
 	./atastandings -S nj -s parlin -p 1
 	./atastandings -m division -S nj -s parlin -p 1
+	./atastandings -m division -d northeast -s parlin -p 1
+	./atastandings -m division -d northeast,mid-america -s parlin -p 1
+
 
 readme: \
 	readme-print-readme-heading \
@@ -173,6 +172,7 @@ readme-print-readme-trailer:
 new-readme: atastandings makefile
 	: > new-readme
 	$(MAKE) readme
+
 
 parlin:
 	./atastandings -B --worlds -s parlin
