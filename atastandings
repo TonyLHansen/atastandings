@@ -1049,7 +1049,7 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |
     |There are also is a separate form of cache verification that downloads the first state or world
     |file for the 'updated on' value. If the value is the same in each state/world standings file,
-    |the state/world cache file will not be downloaded. THis type of cache verification is
+    |the state/world cache file will not be downloaded. This type of cache verification is
     |enabled using `-w`/`--use-web-standings-dates`.
     |
     |The `-T`/`--ignore-cache-times` can be used if you wish to turn off caching.
@@ -1153,15 +1153,18 @@ def print_readme_trailer():
         """
     |# Installation
     |This program was written using python3, so you will need a python3 environment to run it.
-    |You will also need the python `requests` library.
+    |You will also need the python `httpx` library.
     |(In my opinion, if you have a Windows system, the easiest way to install a full python3
     |environment is to install the MicroSoft WSL2 infrastructure, which will include python3
     |and many other tools.)
     |
-    |If you do not have the `requests` library, you will need to run a command such as this to load it:
+    |If you do not have the `httpx` library, you will need to run a command such as this to load it:
     |``` shell
-    |pip3 install requests
+    |pip3 install httpx
     |```
+    |
+    |Depending on your installation, you may also need to install
+    |the `pyyaml` library.
     |
     |Put the atastandings script somewhere in your path, make sure it is executable
     |(in Linux and WSL, `chmod a+x atastandings`) and run it with the options you desire.
