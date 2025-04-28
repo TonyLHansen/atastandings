@@ -11,13 +11,13 @@ import glob
 import gzip
 import html
 import io
+import json
 import os
 import random
 import re
 import sys
 import time
 
-# import requests
 import httpx
 import yaml
 
@@ -39,7 +39,7 @@ RANDOM_WORDS = []
 USED_WORDS = []
 RANDOM_NAME_MAP = {}
 
-OMIT_CHOICES = ["location", "region", "place", "code", "division", "points"]
+OMIT_CHOICES = ["location", "place", "points", "region", "division", "code"]
 # add to minimized() when adding to this list
 MINIMIZE_CHOICES = ["division"]
 
@@ -708,14 +708,38 @@ def print_info_by_division(args, info):
             print("")
 
 
-def print_info(args, info):
+def print_info(args, data):
     """Given a structure'd set of standings, print it appropriately"""
     if args.dots:
         print("", file=sys.stderr, flush=True)
-    if args.by_person or args.by_person_with_divisions:
-        print_info_by_name(args, info)
+    if args.output_json:
+        json.dump(data, sys.stdout, indent=4)
     else:
-        print_info_by_division(args, info)
+        print(data["title"])
+        if args.by_person or args.by_person_with_divisions:
+            print_info_by_name(args, data["all_info"])
+        else:
+            print_info_by_division(args, data["all_info"])
+
+
+def get_country(state):
+    """Return the appropriate country for a given state"""
+    # https://atamartialarts.com/Scripts/state-standing.bundle.js
+    # Set the country code appropriately based on the state.
+    # Experimentally, it looks like "country=$COUNTRY" is NOT required,
+    # but we'll pass it in anyway.
+    if state in CA_PROVINCES:
+        country = "CA"
+    else:
+        country = "US"
+    return country
+
+
+def upper_case(lst):
+    """Convert all elements in the array to uppercase"""
+    if lst:
+        for i, l in enumerate(lst):
+            lst[i] = l.upper()
 
 
 def print_worlds(args):
@@ -731,30 +755,17 @@ def print_worlds(args):
             print(f"{code[0].split('=')[1]}: {code[1]}")
 
     else:
-        print("WORLD STANDINGS", end="")
+        title = "WORLD STANDINGS"
         if args.search:
-            print(f", searching for '{args.search}'", end="")
-        print(f", maximum place of {args.maximum_place}")
+            title += f", searching for '{args.search}'"
+        title += f", maximum place of {args.maximum_place}"
+        data = {"title": title, "worlds": "worlds", "all_info": []}
 
-        all_info = []
         for code in codes:
             info = get_info(args, code, "WORLDS", f"{WORLDBASE}?{code[0]}", "INFO", "world")
-            all_info += info
-        all_info = trim_info(args, all_info)
-        print_info(args, all_info)
-
-
-def get_country(state):
-    """Return the appropriate country for a given state"""
-    # https://atamartialarts.com/Scripts/state-standing.bundle.js
-    # Set the country code appropriately based on the state.
-    # Experimentally, it looks like "country=$COUNTRY" is NOT required,
-    # but we'll pass it in anyway.
-    if state in CA_PROVINCES:
-        country = "CA"
-    else:
-        country = "US"
-    return country
+            data["all_info"] += info
+        data["all_info"] = trim_info(args, data["all_info"])
+        print_info(args, data)
 
 
 def print_districts(args, need_nl):
@@ -777,24 +788,25 @@ def print_districts(args, need_nl):
                 for state in DISTRICTS[district]:
                     country = get_country(state)
                     ncodes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", "state")
-                    for x in ncodes:
-                        if x[0] not in codeset:
-                            codes.append(x)
-                            codeset.add(x[0])
+                    for code in ncodes:
+                        if code[0] not in codeset:
+                            codes.append(code)
+                            codeset.add(code[0])
 
             print(f"DISTRICT STANDINGS DIVISIONS FOR {district}")
             for code in codes:
                 print(f"{code[0].split('=')[1]}: {code[1]}")
 
         else:
-            print(f"DISTRICT STANDINGS FOR {district}", end="")
+            title = f"DISTRICT STANDINGS FOR {district}"
             if args.search:
-                print(f", searching for '{args.search}'", end="")
-            print(f", maximum place of {args.maximum_place}")
+                title += f", searching for '{args.search}'"
+            title += f", maximum place of {args.maximum_place}"
+            data = {"title": title, "district": district, "all_info": []}
 
             temp_maximum_place = args.maximum_place
             args.maximum_place = 10
-            all_info = []
+
             for state in DISTRICTS[district]:
                 country = get_country(state)
                 if not args.division_code:
@@ -817,29 +829,22 @@ def print_districts(args, need_nl):
                         # otherwise
                         #     add this entire i to all_info
                         found = False
-                        for ai in all_info:
+                        for ai in data["all_info"]:
                             if i["division"] == ai["division"]:
                                 found = True
                                 ai["places"] += i["places"]
                                 break
 
                         if not found:
-                            all_info.append(i)
+                            data["all_info"].append(i)
 
             args.maximum_place = temp_maximum_place
             # sort the places arrays
-            for ai in all_info:
+            for ai in data["all_info"]:
                 ai["places"] = sorted(ai["places"], key=lambda k: (-k["points"], sortable_name(k["name"])))
                 renumber_places(ai["places"])
-            all_info = trim_info(args, all_info)
-            print_info(args, all_info)
-
-
-def upper_case(lst):
-    """Convert all elements in the array to uppercase"""
-    if lst:
-        for i, l in enumerate(lst):
-            lst[i] = l.upper()
+            data["all_info"] = trim_info(args, data["all_info"])
+            print_info(args, data)
 
 
 def print_states(args, need_nl):
@@ -861,19 +866,19 @@ def print_states(args, need_nl):
                 print(f"{code[0].split('=')[1]}: {code[1]}")
 
         else:
-            print(f"STATE STANDINGS FOR {state}", end="")
+            title = f"STATE STANDINGS FOR {state}"
             if args.search:
-                print(f", searching for '{args.search}'", end="")
-            print(f", maximum place of {args.maximum_place}")
+                title += f", searching for '{args.search}'"
+            title += f", maximum place of {args.maximum_place}"
+            data = {"title": title, "state": state, "all_info": []}
 
-            all_info = []
             for code in codes:
                 info = get_info(
                     args, code, state, f"{STATEBASE}?country={country}&state={state}&{code[0]}", "CONTENT", "state"
                 )
-                all_info += info
-            all_info = trim_info(args, all_info)
-            print_info(args, all_info)
+                data["all_info"] += info
+            data["all_info"] = trim_info(args, data["all_info"])
+            print_info(args, data)
 
 
 def check_option(arglist, opts, choices):
@@ -886,10 +891,44 @@ def check_option(arglist, opts, choices):
                 )
 
 
-def print_readme_heading(print_example_preamble=True):
+def printable_list(lst, sep=", ", sep2=" or "):
+    """
+    From an array, create a printable version of it.
+    For example, ['a', 'b'] would return
+    'a' or 'b'
+    ['a', 'b', 'c'] would return
+    'a', 'b' or 'c'
+    ['a'] would return
+    'a'
+    """
+    l = len(lst)
+    lst = sorted(lst)
+    if l == 1:
+        return repr(lst[0])
+    if l == 2:
+        return repr(lst[0]) + sep2 + repr(lst[1])
+    ret = sep.join([repr(a) for a in lst[:-1]])
+    ret += sep2
+    ret += repr(lst[-1])
+    return ret
+
+
+def get_no_options(args):
+    """
+    From the options, return a list of those that begin with the string "--no-".
+    """
+    ret = []
+    for arg in args:
+        for opt in arg.option_strings:
+            if opt.startswith("--no-"):
+                ret.append(opt)
+    return ret
+
+
+def print_readme_heading(args_actions, print_example_preamble=True):
     """Print the opening of the readme file."""
     # pylint: disable=line-too-long
-    print(
+    hdr = (
         """
     |# ATA (American Taekwondo Association) World and State Standings Printer
     |
@@ -909,14 +948,9 @@ def print_readme_heading(print_example_preamble=True):
     |
     |* `--worlds`, `-W` -- search the world standings.
     |* `--district name`, `-d name` -- search the given district, one of
-    |    `Mid-America`,
-    |    `Midwest`,
-    |    `Northeast`,
-    |    `Northwest`,
-    |    `Rockies`,
-    |    `Southeast`,
-    |    `South`,
-    |    or `Southwest`.
+    |    """
+        + printable_list(list(DISTRICTS.keys()), ",\n    ", " or\n    ")
+        + """.
     |
     |This may be specified multiple times. You may also specify a list, as in `--district 'Midwest,South'.
     |Or you may specify `--all-districts`.
@@ -947,14 +981,9 @@ def print_readme_heading(print_example_preamble=True):
     |* `--division-code code`, `-c code` -- Restrict the output to the specified diision code.
     |This may be specified multiple times.
     |* `--competition competition` -- Only print this competition, one of
-    |    `forms`,
-    |    `weapons`,
-    |    `combat-weapons`,
-    |    `sparring`,
-    |    `creative-forms`,
-    |    `creative-weapons`,
-    |    `x-treme-forms`,
-    |    or `x-treme-weapons`.
+    |    """
+        + printable_list(list(COMPETITIONS.keys()), ",\n    ", " or\n    ")
+        + """.
     |May be specified multiple times, or as a list such as `--competiton 'forms,weapons'`.
     |
     |(Not all divisions have competitors in each state or province.
@@ -991,7 +1020,9 @@ def print_readme_heading(print_example_preamble=True):
     |You can choose to omit pieces of information.
     |
     |* `--omit item`, `-O item` -- Omit information from the printouts,
-    |where `item` is one of `location`, `place`, `points`, `region`, `division` or `code`.
+    |where `item` is one of """
+        + printable_list(OMIT_CHOICES)
+        + """.
     |The `region` is either the world "WORLDS" or the state or province name.
     |The code is the division code.
     |This may be specified multiple times, or you may specify a list, as in `--omit 'location,place'`.
@@ -1083,20 +1114,19 @@ def print_readme_heading(print_example_preamble=True):
     |
     |Some options (such as `--dots`) have `--no-` versions that allow the option to be turned on
     |in the configuration file, and then be turned off from the command line. The options that currently
-    |allow `--no-` options to be specified are: `--no-dots`, `--no-gzip-cache`, `--no-bzip2-cache`,
-    |and `--no-offline`.
+    |allow `--no-` options to be specified are:
+    |"""
+        + printable_list(get_no_options(args_actions))
+        + """.
     |
     |## Configuration environment variable
     |The options in a configuration file are also settable in an ATASTANDINGS environment variable.
     |Use the same format as the configuration file, but separate the variables with a semi-colon ("`;`"),
     |as in `ATASTANDINGS='dots: true; list-division-codes: true'`.
     |
-    |""".replace(
-            "    |", ""
-        )[
-            1:
-        ]
-    )
+    |"""
+    ).replace("    |", "")[1:]
+    print(hdr)
 
     if print_example_preamble:
         print(
@@ -1305,6 +1335,7 @@ def parse_options(conf):
         action="store_true",
         default=conf.get("list-division-codes"),
     )
+    grp_search.add_argument("--output-json", help=argparse.SUPPRESS, action="store_true")
 
     ################
     # connection control options
@@ -1415,7 +1446,7 @@ def parse_options(conf):
             grp_other.add_argument(a, arg, help=argparse.SUPPRESS, type=str)
         else:
             grp_other.add_argument(a, arg, help=argparse.SUPPRESS, action="store_true")
-    return parser.parse_args()
+    return (parser, parser.parse_args())
 
 
 def get_configuration():
@@ -1558,7 +1589,7 @@ def main():
     """main function"""
     conf = get_configuration()
     add_environment(conf)
-    args = parse_options(conf)
+    (parser, args) = parse_options(conf)
 
     # check the data
     check_global_arrays()
@@ -1610,14 +1641,16 @@ def main():
     check_positive(args.retry_interval, "--retry-interval")
 
     if args.extended_help:
-        print_readme_heading(False)
+        # pylint: disable=protected-access
+        print_readme_heading(parser._actions, False)
 
     if args.output:
         # pylint: disable=consider-using-with
         sys.stdout = open(args.output, "a")
 
     if args.print_readme_heading:
-        print_readme_heading()
+        # pylint: disable=protected-access
+        print_readme_heading(parser._actions)
 
     if args.print_readme_trailer:
         print_readme_trailer()
@@ -1640,6 +1673,7 @@ def main():
 
         if args.state:
             print_states(args, args.worlds or args.district)
+
     except BrokenPipeError:
         pass
 
