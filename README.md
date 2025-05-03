@@ -26,7 +26,7 @@ You can instead ask it to search one or more state or district standings.
     'Southeast' or
     'Southwest'.
 
-This may be specified multiple times. You may also specify a list, as in `--district 'Midwest,South'.
+This may be specified multiple times. You may also specify a list, as in `--district 'Midwest,South'`.
 Or you may specify `--all-districts`.
 
 * `--state ABBREV`, `-S ABBREV`, `--province ABBREV` -- search the given state or province,

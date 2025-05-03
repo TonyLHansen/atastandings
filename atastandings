@@ -1072,7 +1072,7 @@ def print_readme_heading(args_actions, print_example_preamble=True):
         + printable_list(list(DISTRICTS.keys()), ",\n    ", " or\n    ")
         + """.
     |
-    |This may be specified multiple times. You may also specify a list, as in `--district 'Midwest,South'.
+    |This may be specified multiple times. You may also specify a list, as in `--district 'Midwest,South'`.
     |Or you may specify `--all-districts`.
     |
     |* `--state ABBREV`, `-S ABBREV`, `--province ABBREV` -- search the given state or province,
