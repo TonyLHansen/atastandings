@@ -33,7 +33,7 @@ Or you may specify `--all-districts`.
 using the two character state or province postoffice code. (`--state` and `--province` are
 treated identically in the code.)
 
-This may be specified multiple times. You may also specify a list, as in `--state 'CA,AK'.
+This may be specified multiple times. You may also specify a list, as in `--state 'CA,AK'`.
 Or you may specify `--all-states`, `--all-us` or `--all-canada`. (Mutually exclusive.)
 
 For example, both `atastandings` and  `atastandings --worlds` will search the world standings.
