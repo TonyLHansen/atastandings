@@ -34,6 +34,8 @@ NAME_SUFFIXES = ["jr.", "sr.", "i", "ii", "iii", "iv"]
 NAME_PREFIXES = ["van", "san", "de", "da", "los", "st.", "saint"]
 
 STANDINGS_DATE = {}
+STANDINGS_WORLDS = "worlds"
+STANDINGS_STATES = "states"
 
 RANDOM_WORDS = []
 USED_WORDS = []
@@ -244,6 +246,30 @@ def get_cache_name(url):
     return "".join(ret)
 
 
+def extra_verbose(args, level, msg):
+    """
+    If args.verbose, print the message.
+    """
+    if args.verbose >= level:
+        print(msg, file=sys.stderr, flush=True)
+
+
+def verbose(args, msg):
+    """
+    If args.verbose, print the message.
+    """
+    if args.verbose:
+        print(msg, file=sys.stderr, flush=True)
+
+
+def dots(args, msg):
+    """
+    If args.dots, print the propre dot.
+    """
+    if args.dots:
+        print(msg, end="", file=sys.stderr, flush=True)
+
+
 def expire_old_cache_file(args, cachename):
     """
     Go through the cache file variations and remove them all.
@@ -255,8 +281,8 @@ def expire_old_cache_file(args, cachename):
             found = True
         except FileNotFoundError:
             pass
-    if found and args.verbose:
-        print(f"{cachename} is too old -- removed", file=sys.stderr)
+    if found:
+        verbose(args, f"{cachename} is too old -- removed")
 
 
 def get_cache(args, cachename_base, url_type):
@@ -273,44 +299,50 @@ def get_cache(args, cachename_base, url_type):
     checked for their dates and only re-retrieved if the dates are different.
     """
     try:
-        if args.verbose:
-            print(f"looking for {cachename_base}", file=sys.stderr)
+        verbose(args, f"looking for {cachename_base}")
 
         (cachename, st) = cache_stat(cachename_base)
         if not args.offline:
             if not args.use_web_standings_dates and not args.ignore_cache_times and st is not None:
-                if args.verbose:
-                    print(
-                        "not args.use_web_standings_dates and not args.ignore_cache_times and st is not None",
-                        file=sys.stderr,
-                    )
+                verbose(
+                    args,
+                    "not args.use_web_standings_dates and not args.ignore_cache_times and st is not None",
+                )
+
                 if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
-                    if args.verbose:
-                        print("\texpiring cache", file=sys.stderr)
+                    verbose(args, "\texpiring cache")
                     expire_old_cache_file(args, cachename)
 
-        if args.dots:
-            print(".", end="", file=sys.stderr, flush=True)
+        dots(args, ".")
 
         with open_cache_read(cachename) as fp:
             text = fp.read()
 
+        cache_standings_date = get_standings_date(text)
         if not args.use_web_standings_dates or args.offline:
+            verbose(args, "not use_web_standings_dates or offline")
+            if url_type not in STANDINGS_DATE:
+                STANDINGS_DATE[url_type] = cache_standings_date
             return (text.splitlines(), False)
 
-        cache_standings_date = get_standings_date(text)
         if url_type in STANDINGS_DATE:
-            if args.verbose:
-                print(f"url_type({url_type}) in {STANDINGS_DATE}")
-                print(f"cache_standings_date={cache_standings_date}")
+            verbose(args, f"url_type({url_type}) in {STANDINGS_DATE}")
+            verbose(args, f"cache_standings_date={cache_standings_date}")
             if STANDINGS_DATE[url_type] == cache_standings_date:
-                if args.verbose:
-                    print("dates are ==")
-                if args.dots:
-                    print(",", end="", file=sys.stderr, flush=True)
+                verbose(args, "dates are ==")
+                dots(args, ",")
                 return (text.splitlines(), False)
 
-        # else, ignore the cache
+        else:
+            verbose(args, f"url_type({url_type}) NOT in {STANDINGS_DATE}")
+            verbose(args, f"cache_standings_date={cache_standings_date}")
+            if time.time() - st.st_mtime < 5 * 60:
+                # recent enough we can use the file
+                verbose(args, f"url_type({url_type}) is recent")
+                verbose(args, f"cache_standings_date={cache_standings_date}")
+                dots(args, f"[{cache_standings_date}]")
+                STANDINGS_DATE[url_type] = cache_standings_date
+                return (text.splitlines(), False)
 
     except FileNotFoundError:
         # no cache
@@ -336,16 +368,13 @@ def get_url(args, url, url_type):
     if args.offline:
         sys.exit(f"Cannot find cache for {url}")
 
-    if args.verbose:
-        print("getting url")
+    verbose(args, "getting url")
 
-    if args.dots:
-        print(":", end="", file=sys.stderr, flush=True)
+    dots(args, ":")
 
     r = None
     errmsg = None
-    if args.verbose:
-        print(f"getting url={url}", file=sys.stderr)
+    verbose(args, f"getting url={url}")
     for i in range(args.connection_count):
         errmsg = None
         try:
@@ -366,7 +395,7 @@ def get_url(args, url, url_type):
         if r:
             break
 
-        print(f"#{i}: {errmsg}")
+        print(f"#{i+1}: {errmsg}", file=sys.stderr, flush=True)
         errmsg = None
         time.sleep(args.retry_interval)
 
@@ -379,16 +408,16 @@ def get_url(args, url, url_type):
     if r.status_code >= 300:
         sys.exit(f"Accessing {url} returned the status code {r.status_code}")
 
+    if args.request_interval:
+        time.sleep(args.request_interval)
     web_standings_date = get_standings_date(r.text)
     if url_type not in STANDINGS_DATE:
         STANDINGS_DATE[url_type] = web_standings_date
 
-    if args.verbose > 2:
-        print(f"page={r.text}", file=sys.stderr)
+    extra_verbose(args, 2, f"page={r.text}")
     if not args.do_not_write_cache:
         suffix = ".bz2" if args.bzip2_cache else ".gz" if args.gzip_cache else ""
-        if args.verbose:
-            print(f"writing to {cachename_base}{suffix}", file=sys.stderr)
+        verbose(args, f"writing to {cachename_base}{suffix}")
         with open_cache_write(args, f"{cachename_base}{suffix}.tmp", "wt") as fp:
             fp.write(r.text)
         os.rename(f"{cachename_base}{suffix}.tmp", f"{cachename_base}{suffix}")
@@ -400,8 +429,7 @@ def get_url(args, url, url_type):
 def clean_cache(args):
     """Clear out all files in the cache directory named "atastandings." followed by anything."""
     for fname in glob.glob(f"{args.cache_directory}/atastandings.*"):
-        if args.verbose:
-            print(f"Cleaning {fname}", file=sys.stderr)
+        verbose(args, f"Cleaning {fname}")
         os.unlink(fname)
 
 
@@ -535,7 +563,9 @@ def get_info(args, code, region, url, border, url_type):  # pylint: disable=too-
 
 
 def renumber_places(places):
-    """Given an array of places, sorted by score, change the "place" value to match the order"""
+    """
+    Given an array of places, sorted by score, change the "place" value to match the order.
+    """
     last_place = 0
     last_score = 0
     index = 0
@@ -687,6 +717,7 @@ def print_info_by_name(args, info):
 
 def print_info_by_division(args, info):
     """Given a structure'd set of standings, print it by division"""
+    print(info)
     for i in info:
         print("DIVISION", end="")
         print_omitted(args, "region", " ", i["region"])
@@ -710,11 +741,12 @@ def print_info_by_division(args, info):
 
 def print_info(args, data):
     """Given a structure'd set of standings, print it appropriately"""
-    if args.dots:
-        print("", file=sys.stderr, flush=True)
+    dots(args, "\n")
     if args.output_json:
         json.dump(data, sys.stdout, indent=4)
-    else:
+        print()
+
+    if args.print:
         print(data["title"])
         if args.by_person or args.by_person_with_divisions:
             print_info_by_name(args, data["all_info"])
@@ -747,7 +779,7 @@ def print_worlds(args):
     if args.division_code:
         codes = [[f"code={code}", ""] for code in args.division_code]
     else:
-        codes = get_codes(args, WORLDBASE, "world")
+        codes = get_codes(args, WORLDBASE, STANDINGS_WORLDS)
 
     if args.list_division_codes:
         print("WORLD STANDINGS DIVISIONS")
@@ -759,11 +791,13 @@ def print_worlds(args):
         if args.search:
             title += f", searching for '{args.search}'"
         title += f", maximum place of {args.maximum_place}"
-        data = {"title": title, "worlds": "worlds", "all_info": []}
+        data = {"title": title, "date": None, "worlds": "worlds", "all_info": []}
 
         for code in codes:
-            info = get_info(args, code, "WORLDS", f"{WORLDBASE}?{code[0]}", "INFO", "world")
+            info = get_info(args, code, "WORLDS", f"{WORLDBASE}?{code[0]}", "INFO", STANDINGS_WORLDS)
             data["all_info"] += info
+
+        data["date"] = STANDINGS_DATE[STANDINGS_WORLDS]
         data["all_info"] = trim_info(args, data["all_info"])
         print_info(args, data)
 
@@ -773,7 +807,8 @@ def print_districts(args, need_nl):
 
     for district in args.district:
         if need_nl or district != args.district[0]:
-            print("")
+            if args.list_division_codes:
+                print("")
 
         if args.division_code:
             codes = [[f"code={code}", ""] for code in args.division_code]
@@ -787,7 +822,7 @@ def print_districts(args, need_nl):
                 codeset = set()
                 for state in DISTRICTS[district]:
                     country = get_country(state)
-                    ncodes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", "state")
+                    ncodes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES)
                     for code in ncodes:
                         if code[0] not in codeset:
                             codes.append(code)
@@ -802,16 +837,13 @@ def print_districts(args, need_nl):
             if args.search:
                 title += f", searching for '{args.search}'"
             title += f", maximum place of {args.maximum_place}"
-            data = {"title": title, "district": district, "all_info": []}
-
-            temp_maximum_place = args.maximum_place
-            args.maximum_place = 10
+            data = {"title": title, "date": None, "district": district, "all_info": []}
 
             for state in DISTRICTS[district]:
                 country = get_country(state)
                 if not args.division_code:
                     country = get_country(state)
-                    codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", "state")
+                    codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES)
 
                 for code in codes:
                     info = get_info(
@@ -820,7 +852,7 @@ def print_districts(args, need_nl):
                         district,
                         f"{STATEBASE}?country={country}&state={state}&{code[0]}",
                         "CONTENT",
-                        "state",
+                        STANDINGS_STATES,
                     )
                     info = trim_info(args, info, place_only=True)
                     for i in info:
@@ -838,11 +870,16 @@ def print_districts(args, need_nl):
                         if not found:
                             data["all_info"].append(i)
 
-            args.maximum_place = temp_maximum_place
-            # sort the places arrays
+            ################
+            # After collecting all of the information in the states of the district
+            ################
+
+            # Sort and renumber the places arrays
             for ai in data["all_info"]:
                 ai["places"] = sorted(ai["places"], key=lambda k: (-k["points"], sortable_name(k["name"])))
                 renumber_places(ai["places"])
+
+            data["date"] = STANDINGS_DATE[STANDINGS_STATES]
             data["all_info"] = trim_info(args, data["all_info"])
             print_info(args, data)
 
@@ -851,14 +888,15 @@ def print_states(args, need_nl):
     """Print the state standings"""
     for state in args.state:
         if need_nl or state != args.state[0]:
-            print("")
+            if args.list_division_codes:
+                print("")
 
         country = get_country(state)
 
         if args.division_code:
             codes = [[f"code={code}", ""] for code in args.division_code]
         else:
-            codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", "state")
+            codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES)
 
         if args.list_division_codes:
             print(f"STATE STANDINGS DIVISIONS FOR {state}")
@@ -870,15 +908,97 @@ def print_states(args, need_nl):
             if args.search:
                 title += f", searching for '{args.search}'"
             title += f", maximum place of {args.maximum_place}"
-            data = {"title": title, "state": state, "all_info": []}
+            data = {"title": title, "date": None, "state": state, "all_info": []}
 
             for code in codes:
                 info = get_info(
-                    args, code, state, f"{STATEBASE}?country={country}&state={state}&{code[0]}", "CONTENT", "state"
+                    args,
+                    code,
+                    state,
+                    f"{STATEBASE}?country={country}&state={state}&{code[0]}",
+                    "CONTENT",
+                    STANDINGS_STATES,
                 )
                 data["all_info"] += info
+
+            data["date"] = STANDINGS_DATE[STANDINGS_STATES]
             data["all_info"] = trim_info(args, data["all_info"])
             print_info(args, data)
+
+
+def print_top(args):
+    """
+    Print the top args.maximum_place positions in the given divisions.
+    """
+    states = []
+    if args.district:
+        for district in args.district:
+            for state in DISTRICTS[district]:
+                states.append(state)
+    if args.state:
+        for state in args.state:
+            states.append(state)
+
+    title = f"TOP {args.maximum_place} STANDINGS"
+    if args.search:
+        title += f", searching for '{args.search}'"
+    if args.district:
+        title += ", in districts "
+        title += ", ".join(args.district)
+        if args.state:
+            title += "; and in states "
+    if args.state:
+        if not args.district:
+            title += "; in states "
+        title += ", ".join(args.state)
+
+    data = {"title": title, "date": None, "top": args.maximum_place, "all_info": []}
+
+    for state in states:
+        country = get_country(state)
+        if not args.division_code:
+            country = get_country(state)
+            codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES)
+        else:
+            codes = args.division_code
+
+        for code in codes:
+            info = get_info(
+                args,
+                code,
+                "combined",
+                f"{STATEBASE}?country={country}&state={state}&{code[0]}",
+                "CONTENT",
+                STANDINGS_STATES,
+            )
+            info = trim_info(args, info, place_only=True)
+            for i in info:
+                # if the corresponding i[division] is in all_info.division,
+                #     append i[places] to all_info[places]
+                # otherwise
+                #     add this entire i to all_info
+                found = False
+                for ai in data["all_info"]:
+                    if i["division"] == ai["division"]:
+                        found = True
+                        ai["places"] += i["places"]
+                        break
+
+                if not found:
+                    data["all_info"].append(i)
+
+    ################
+    # After collecting all of the information in the states of the specified districts and states
+    ################
+
+    # Sort and renumber the places arrays
+    for ai in data["all_info"]:
+        ai["places"] = sorted(ai["places"], key=lambda k: (-k["points"], sortable_name(k["name"])))
+        renumber_places(ai["places"])
+
+    data["date"] = STANDINGS_DATE[STANDINGS_STATES]
+    data["all_info"] = trim_info(args, data["all_info"])
+    print_info(args, data)
 
 
 def check_option(arglist, opts, choices):
@@ -942,7 +1062,7 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |possibly followed by an argument such as a search string or a state/province abbreviation.
     |There are also short versions of many of the options that are a single hyphen and a single lettter.
     |
-    |## Worlds, District and State Standings
+    |## Worlds, District, State and Top Standings
     |The default for `atastandings` is to search the world standings.
     |You can instead ask it to search one or more state or district standings.
     |
@@ -960,12 +1080,19 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |treated identically in the code.)
     |
     |This may be specified multiple times. You may also specify a list, as in `--state 'CA,AK'.
-    |Or you may specify `--all-states`.
+    |Or you may specify `--all-states`, `--all-us` or `--all-canada`. (Mutually exclusive.)
     |
     |For example, both `atastandings` and  `atastandings --worlds` will search the world standings.
     |`atastandings --district northeast` will search the Northeast district.
     |`atastandings --state pa --state ca` will search the state standings for Pennsylvania and California.
     |`atastandings --worlds --state ca` will search both the world stands and the state standings for California.
+    |
+    | `--top` -- This option can be combined with `--state`/`-S` and `--district`/`-d` to
+    |print the top people across the specified states/provinces and districts in order.
+    |(The `--maximum-place`/`-p` option can be used to change the number of places. See below.)
+    |
+    |For example, `atastandings --top --maximum-place 20 --district Northeast` will
+    |print the top 20 people in each division across states in the Northeast district.
     |
     |## Division Control
     |
@@ -1041,6 +1168,9 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |program will exit with an error message. (Note: the `connection-count` restarts for each web
     |page requested.
     |
+    |To combat too many network failures, it is possible to set a pause after each successful network connection.
+    |This can be set with --request-interval, which defaults to 1 second.
+    |
     |## Web Cache
     |By default, `atastandings` will maintain a cache of the web sites, so that you can have faster response times
     |when you run the program multiple times.
@@ -1049,8 +1179,9 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |
     |There are also is a separate form of cache verification that downloads the first state or world
     |file for the 'updated on' value. If the value is the same in each state/world standings file,
-    |the state/world cache file will not be downloaded. This type of cache verification is
-    |enabled using `-w`/`--use-web-standings-dates`.
+    |the state/world cache file will not be downloaded.
+    |(A file less than 5 minutes old is not re-downloaded but used as-is.)
+    |This type of cache verification is enabled using `-w`/`--use-web-standings-dates`.
     |
     |The `-T`/`--ignore-cache-times` can be used if you wish to turn off caching.
     |
@@ -1239,6 +1370,9 @@ class BooleanAction(argparse.Action):
     """
     Class that supports both --option and --no-option.
     https://thisdataguy.com/2017/07/03/no-options-with-argparse-and-python/
+
+    To use:
+    parser.add_argument("--option", "--no-option", action=BooleanAction, default=True/False)
     """
 
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
@@ -1254,7 +1388,11 @@ def parse_options(conf):
 
     parser = argparse.ArgumentParser(description=__doc__, epilog=EPILOG)
     grp_search = parser.add_argument_group("Search Options")
-    grp_search.add_argument("-W", "--worlds", help="Search the world standings.", action="store_true")
+
+    grp_search_worlds = grp_search.add_mutually_exclusive_group()
+    grp_search_worlds.add_argument("-W", "--worlds", help="Search the world standings.", action="store_true")
+    grp_search_worlds.add_argument("-t", "--top", help="Search the world standings.", action="store_true")
+
     grp_search_state = grp_search.add_mutually_exclusive_group()
     grp_search_state.add_argument(
         "-S",
@@ -1267,11 +1405,16 @@ def parse_options(conf):
     grp_search_state.add_argument(
         "--all-states", "--all-provinces", help="Search all states and provinces.", action="store_true"
     )
+    grp_search_state.add_argument("--all-us", help="Search all of the US.", action="store_true")
+    grp_search_state.add_argument("--all-canada", help="Search all of Canada.", action="store_true")
+
     grp_search_district = grp_search.add_mutually_exclusive_group()
     grp_search_district.add_argument(
         "-d", "--district", help="District to search. May be specified multiple times.", type=str, action="append"
     )
     grp_search_district.add_argument("--all-districts", help="Search all districts.", action="store_true")
+
+    # search options
     grp_search.add_argument("-s", "--search", help="String to search for in the standings.", type=str, default="")
     grp_search.add_argument(
         "-k",
@@ -1338,7 +1481,8 @@ def parse_options(conf):
         action="store_true",
         default=conf.get("list-division-codes"),
     )
-    grp_search.add_argument("--output-json", help=argparse.SUPPRESS, action="store_true")
+    grp_search.add_argument("-J", "--output-json", help=argparse.SUPPRESS, action="store_true")
+    grp_search.add_argument("-P", "--print", help=argparse.SUPPRESS, action="store_true")
 
     ################
     # connection control options
@@ -1355,6 +1499,12 @@ def parse_options(conf):
         help="Seconds between connection attempts when retrying",
         type=int,
         default=conf.get("retry-interval", 30),
+    )
+    grp_conn.add_argument(
+        "--request-interval",
+        help="Seconds between successful connection attempts",
+        type=int,
+        default=conf.get("request-interval", 1),
     )
 
     ################
@@ -1457,11 +1607,11 @@ def get_configuration():
     Look for a configuration file and mix its values in
     with the command line.
     Look for the first of:
-        ~/.atastandings.yaml
         dirname($0)/.atastandings.yaml
+        ~/.atastandings.yaml
     """
 
-    verbose = sum(key in ("-v", "--verbose") for key in sys.argv)
+    averbose = sum(key in ("-v", "--verbose") for key in sys.argv)
 
     yaml_name = "/.atastandings.ini"
     conf_args = {}
@@ -1470,8 +1620,9 @@ def get_configuration():
         os.getenv("HOME", "/does-not-exist/") + yaml_name,
         os.getenv("HOMEPATH", "/does-not-exist/") + yaml_name,
     ]:
-        if verbose:
-            print(f"looking for {conf}")
+        if averbose:
+            print(f"looking for {conf}", file=sys.stderr, flush=True)
+
         try:
             with open(conf) as fp:
                 conf_args = yaml.safe_load(fp)
@@ -1563,8 +1714,8 @@ def update_cache(args):
     Search for standings files in the cache directory.
     Look first for world standings files, then for state standings files.
     """
-    s = update_cache_worldstate(args, f"{STATE_SUFFIX}", "state")
-    w = update_cache_worldstate(args, f"{WORLD_SUFFIX}", "world")
+    s = update_cache_worldstate(args, f"{STATE_SUFFIX}", STANDINGS_STATES)
+    w = update_cache_worldstate(args, f"{WORLD_SUFFIX}", STANDINGS_WORLDS)
     return (s, w)
 
 
@@ -1582,10 +1733,20 @@ def expand_comma_lists(lst):
     return ret
 
 
-def check_positive(val, name):
-    """Check the value make sure it is >= 1."""
-    if val < 1:
-        sys.exit(f"{sys.argv[0]}: error: error {name} must be a positive value, not {val}")
+def check_numeric_option(parser, val, name, min_value=1):
+    """Check the value make sure it is >= min_value."""
+    if val < min_value:
+        parser.error(f"{sys.argv[0]}: error: error {name} must be >= {min_value}, not '{val}'")
+
+
+def usage(parser, msg):
+    """
+    Print a usage message along with an error message.
+    """
+    parser.print_usage(sys.stderr)
+    barg0 = os.path.basename(sys.argv[0])
+    print(f"{barg0}: error: {msg}", file=sys.stderr)
+    sys.exit(2)
 
 
 def main():
@@ -1609,6 +1770,10 @@ def main():
             print("Cached world files were updated")
         sys.exit(state_updated + 2 * world_updated)
 
+    # check the value of --top option
+    if args.top and args.list_division_codes:
+        usage(parser, "--top and -l/--list-division-codes cannot be used together")
+
     # check the values of the --omit option
     args.omit = expand_comma_lists(args.omit)
     check_option(args.omit, "-O/--omit", OMIT_CHOICES)
@@ -1631,17 +1796,27 @@ def main():
     args.competition = expand_comma_lists(args.competition)
     check_option(args.competition, "--competiton", COMPETITIONS.keys())
 
-    # check the values of the --state/--province option
+    # Check the values of the --state/--province, --all-states/--all-provinces, --all-us, --all-canada options.
+    # Argparse already makes these options exclusive.
     # The web site allows for both lower and upper case for states. Upper case displays better.
     if args.all_states:
         args.state = US_STATES + CA_PROVINCES
+    elif args.all_us:
+        args.state = US_STATES
+    elif args.all_canada:
+        args.state = CA_PROVINCES
     upper_case(args.state)
     args.state = expand_comma_lists(args.state)
     check_option(args.state, "-S/--state", US_STATES + CA_PROVINCES)
 
-    # check the values of the connection settings
-    check_positive(args.connection_count, "--connection-count")
-    check_positive(args.retry_interval, "--retry-interval")
+    # Check the values of the connection settings
+    check_numeric_option(parser, args.connection_count, "--connection-count")
+    check_numeric_option(parser, args.retry_interval, "--retry-interval")
+    check_numeric_option(parser, args.retry_interval, "--request-interval", min_value=0)
+
+    # Check the values of the print settings
+    if not args.output_json and not args.print:
+        args.print = True
 
     if args.extended_help:
         # pylint: disable=protected-access
@@ -1671,11 +1846,15 @@ def main():
         if args.worlds:
             print_worlds(args)
 
-        if args.district:
-            print_districts(args, args.worlds)
+        if args.top:
+            print_top(args)
 
-        if args.state:
-            print_states(args, args.worlds or args.district)
+        else:
+            if args.district:
+                print_districts(args, args.worlds)
+
+            if args.state:
+                print_states(args, args.worlds or args.district)
 
     except BrokenPipeError:
         pass

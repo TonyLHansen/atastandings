@@ -29,6 +29,7 @@ test:
 
 
 readme: \
+	readme-clear \
 	readme-print-readme-heading \
 	readme-school-in-world \
 	readme-school-in-worlds-or-state \
@@ -36,6 +37,7 @@ readme: \
 	readme-state-champions \
 	readme-state-champions-with-divisions \
 	readme-state-champion-names \
+	readme-leading-20-in-district \
 	readme-district-eligible-by-division \
 	readme-district-eligible-by-name \
 	readme-district-elibigle-students \
@@ -44,6 +46,9 @@ readme: \
 	readme-district-divisions-from-school \
 	readme-district-forms-divisions-from-school \
 	readme-print-readme-trailer
+
+readme-clear:
+	rm -f new-readme
 
 readme-print-readme-heading:
 	@echo readme-print-readme-heading
@@ -100,6 +105,14 @@ readme-state-champion-names:
 		-2 "After the results are finalized, show all state champions from Aurora, Colorado, sorted by name. \
 Print *ONLY* their names, without their location." \
 		--by-person --state co --search aurora --maximum-place 1 --omit location
+
+readme-leading-20-in-district:
+	@echo readme-leading-20-in-district
+	./atastandings -N lorem.words -M 10 \
+		 --output new-readme \
+		-G "Show Top 20 Students Leading Competition in a District" \
+		-2 "Show the top 20 students in the Rockies district plus Nevada." \
+		--top --district rockies --state nv --maximum-place 20
 
 readme-district-eligible-by-division:
 	@echo readme-district-eligible-by-division
