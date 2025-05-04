@@ -6,7 +6,9 @@ none:
 test:
 	./atastandings --help # > /dev/null
 	./atastandings -l
-	if grep '^offline:' .atastandings.ini > /dev/null; then ./atastandings -l -S nj; else ./atastandings -I -l -S nj; fi
+	if grep '^offline:' .atastandings.ini > /dev/null \
+	|| echo $$ATASTANDINGS | grep offline: > /dev/null; \
+	then ./atastandings -l -S nj; else ./atastandings -I -l -S nj; fi
 	./atastandings -S nj
 	./atastandings -S nj -p 3
 	./atastandings -B -W -S nj -s parlin -p 10

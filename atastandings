@@ -1084,7 +1084,7 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |treated identically in the code.)
     |
     |This may be specified multiple times. You may also specify a list, as in `--state 'CA,AK'`.
-    |Or you may specify `--all-states`, `--all-us` or `--all-canada`. (Mutually exclusive.)
+    |Or you may specify `--all-us`, `--all-us` or `--all-canada`.
     |
     |For example, both `atastandings` and  `atastandings --worlds` will search the world standings.
     |`atastandings --district northeast` will search the Northeast district.
@@ -1401,8 +1401,7 @@ def parse_options(conf):
     grp_search_worlds.add_argument("-W", "--worlds", help="Search the world standings.", action="store_true")
     grp_search_worlds.add_argument("-t", "--top", help="Search the world standings.", action="store_true")
 
-    grp_search_state = grp_search.add_mutually_exclusive_group()
-    grp_search_state.add_argument(
+    grp_search.add_argument(
         "-S",
         "--state",
         "--province",
@@ -1410,11 +1409,8 @@ def parse_options(conf):
         type=str,
         action="append",
     )
-    grp_search_state.add_argument(
-        "--all-states", "--all-provinces", help="Search all states and provinces.", action="store_true"
-    )
-    grp_search_state.add_argument("--all-us", help="Search all of the US.", action="store_true")
-    grp_search_state.add_argument("--all-canada", help="Search all of Canada.", action="store_true")
+    grp_search.add_argument("--all-us", help="Search all of the US.", action="store_true")
+    grp_search.add_argument("--all-canada", help="Search all of Canada.", action="store_true")
 
     grp_search_district = grp_search.add_mutually_exclusive_group()
     grp_search_district.add_argument(
@@ -1814,14 +1810,12 @@ def main():
     # Check the values of the --state/--province, --all-states/--all-provinces, --all-us, --all-canada options.
     # Argparse already makes these options exclusive.
     # The web site allows for both lower and upper case for states. Upper case displays better.
-    if args.all_states:
-        args.state = US_STATES + CA_PROVINCES
-    elif args.all_us:
-        args.state = US_STATES
-    elif args.all_canada:
-        args.state = CA_PROVINCES
     upper_case(args.state)
     args.state = expand_comma_lists(args.state)
+    if args.all_us:
+        args.state += US_STATES
+    if args.all_canada:
+        args.state += CA_PROVINCES
     check_option(args.state, "-S/--state", US_STATES + CA_PROVINCES)
 
     # Check the values of the connection settings.

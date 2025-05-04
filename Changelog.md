@@ -1,9 +1,10 @@
 # 2025/05/03: 2025.05.03.1
 ## Changed
-- make --use-web-standings-dates the default caching algorithm
-- rename --ignore-cache-times to --ignore-cache (--ignore-cache-times is still an alias as an option, but not in the configuration file)
+- make `--use-web-standings-dates` the default caching algorithm
+- rename `--ignore-cache-times` to `--ignore-cache` (`--ignore-cache-times` is still an alias as an option, but not in the configuration file)
+- removed `--all-states` and `--all-provinces`, made `--all-us` and `--all-canada` non-exclusive
 ## Add
-- add --use-time-based-cache for force time-based caching
+- add `--use-time-based-cache` to force time-based caching
 
 # 2025/05/03: 2025.05.03.0
 ## Added
