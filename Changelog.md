@@ -1,4 +1,11 @@
-# 2025/05/03:
+# 2025/05/03: 2025.05.03.1
+## Changed
+- make --use-web-standings-dates the default caching algorithm
+- rename --ignore-cache-times to --ignore-cache (--ignore-cache-times is still an alias as an option, but not in the configuration file)
+## Add
+- add --use-time-based-cache for force time-based caching
+
+# 2025/05/03: 2025.05.03.0
 ## Added
 - add `--top`, paired with `--district` and/or `--state` and `--maximum-place` gives top students across the given districts and states
 - add `--request-interval`
@@ -8,7 +15,7 @@
 - tweak error messages
 - `--use-web-standings-dates` does not re-download first file if the file is < 5 minutes old
 
-# 2025/04/28:
+# 2025/04/28: 2025.04.28.0
 ## Added
 - add first cut at `--output-json`
 - add options `--connection-count` and `--retry-interval`

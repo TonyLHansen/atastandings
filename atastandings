@@ -281,6 +281,7 @@ def expire_old_cache_file(args, cachename):
             found = True
         except FileNotFoundError:
             pass
+
     if found:
         verbose(args, f"{cachename} is too old -- removed")
 
@@ -293,25 +294,28 @@ def get_cache(args, cachename_base, url_type):
     The cache is designed so that most web pages are visited exactly once.
     This speeds up running the program multiple times in a row.
     There are options to ignore, disable and clean the cache.
+
+    With use-web-standings-dates caching, the first state/world file is retrieved from the web and
+    examined for the "Standings updated on mm/dd/yyyy" date.
+    Subsequent cached files are checked for their dates and only re-retrieved if the dates are different.
+
     With time-based caching, cache files older than 24 hours are automatically ignored.
-    With use-web-standings-dates, the first state/world file is retrieved from the web and
-    examined for the "Standings updated on mm/dd/yyyy" date. Subsequent cached files are
-    checked for their dates and only re-retrieved if the dates are different.
     """
     try:
         verbose(args, f"looking for {cachename_base}")
 
         (cachename, st) = cache_stat(cachename_base)
-        if not args.offline:
-            if not args.use_web_standings_dates and not args.ignore_cache_times and st is not None:
+        if not args.offline and args.use_time_based_cache:
+            if st is not None:
                 verbose(
                     args,
-                    "not args.use_web_standings_dates and not args.ignore_cache_times and st is not None",
+                    "args.use_time_based_cache and st is not None",
                 )
 
                 if time.time() - st.st_mtime > 24 * 60 * 60:  # ignore files older than 24 hours
                     verbose(args, "\texpiring cache")
                     expire_old_cache_file(args, cachename)
+                    return (None, True)
 
         dots(args, ".")
 
@@ -717,7 +721,7 @@ def print_info_by_name(args, info):
 
 def print_info_by_division(args, info):
     """Given a structure'd set of standings, print it by division"""
-    print(info)
+    verbose(args, info)
     for i in info:
         print("DIVISION", end="")
         print_omitted(args, "region", " ", i["region"])
@@ -1172,18 +1176,22 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |This can be set with --request-interval, which defaults to 1 second.
     |
     |## Web Cache
-    |By default, `atastandings` will maintain a cache of the web sites, so that you can have faster response times
+    |By default, `atastandings` maintains a cache of the web sites, so that you can have faster response times
     |when you run the program multiple times.
-    |Most of the time you can ignore that the cache is being used, as cache files older than 24 hours are automatically ignored.
-    |However power users might want additional controls.
+    |Most of the time you can ignore that the cache is being used, but power users might want additional controls.
     |
-    |There are also is a separate form of cache verification that downloads the first state or world
-    |file for the 'updated on' value. If the value is the same in each state/world standings file,
-    |the state/world cache file will not be downloaded.
-    |(A file less than 5 minutes old is not re-downloaded but used as-is.)
-    |This type of cache verification is enabled using `-w`/`--use-web-standings-dates`.
+    |### *Standings Date* Cache
+    |The default form of cache verification downloads the first state or world file that is needed, and looks
+    }for the 'updated on' value. If the value is the same in each subsequent state/world standings file,
+    |that state/world cache file will not be downloaded.
+    |(If the first file is less than 5 minutes old, it will not be re-downloaded but used as-is.)
+    |This type of cache verification is enabled using `--use-web-standings-dates`/`-w`.
     |
-    |The `-T`/`--ignore-cache-times` can be used if you wish to turn off caching.
+    |### Time-Based Cache
+    |With the time-based cache, files older than 24 hours are automatically re-downloaded.
+    |
+    |### Turning Off Caching
+    |The `-T`/`--ignore-cache` can be used if you wish to turn off caching.
     |
     |* `--cache-directory PATH`, `-C PATH` -- This will set the cache directory to the given path.
     |It defaults to an os-specific temp directory.
@@ -1535,10 +1543,11 @@ def parse_options(conf):
     grp_cache_time = grp_cache.add_mutually_exclusive_group()
     grp_cache_time.add_argument(
         "-T",
+        "--ignore-cache",
         "--ignore-cache-times",
         help="Do not timeout any existing cache of the web pages.",
         action="store_true",
-        default=conf.get("ignore-cache-times", False),
+        default=conf.get("ignore-cache", False),
     )
     grp_cache_time.add_argument(
         "-w",
@@ -1546,6 +1555,12 @@ def parse_options(conf):
         help="Verify 'standings updated' date in the file against the web page.",
         action="store_true",
         default=conf.get("use-web-standings-dates", False),
+    )
+    grp_cache_time.add_argument(
+        "--use-time-based-cache",
+        help="Use a time-based 24-hour cache.",
+        action="store_true",
+        default=conf.get("use-time-based-cache", False),
     )
     grp_cache.add_argument(
         "-D", "--do-not-write-cache", help="Do not write a cache of the web pages.", action="store_true"
@@ -1809,10 +1824,14 @@ def main():
     args.state = expand_comma_lists(args.state)
     check_option(args.state, "-S/--state", US_STATES + CA_PROVINCES)
 
-    # Check the values of the connection settings
+    # Check the values of the connection settings.
     check_numeric_option(parser, args.connection_count, "--connection-count")
     check_numeric_option(parser, args.retry_interval, "--retry-interval")
     check_numeric_option(parser, args.retry_interval, "--request-interval", min_value=0)
+
+    # Check the values of the cache settings. Default to --use-web-standings-dates.
+    if not args.ignore_cache and not args.use_web_standings_dates and not args.use_time_based_cache:
+        args.use_web_standings_dates = True
 
     # Check the values of the print settings
     if not args.output_json and not args.print:
