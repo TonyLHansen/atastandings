@@ -1084,7 +1084,8 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |treated identically in the code.)
     |
     |This may be specified multiple times. You may also specify a list, as in `--state 'CA,AK'`.
-    |Or you may specify `--all-us`, `--all-us` or `--all-canada`.
+    |
+    |You may also specify `--all-us` or `--all-canada`.
     |
     |For example, both `atastandings` and  `atastandings --worlds` will search the world standings.
     |`atastandings --district northeast` will search the Northeast district.
@@ -1110,7 +1111,7 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |This  can be combined with `--district name`, or `--state STATE-ABBREV` to get the division codes specific to a state/province.
     |
     |* `--division-code code`, `-c code` -- Restrict the output to the specified diision code.
-    |This may be specified multiple times.
+    |This may be specified multiple times, or you may specify a list, as in `--division-code 'B01B,G01B'`
     |* `--competition competition` -- Only print this competition, one of
     |    """
         + printable_list(list(COMPETITIONS.keys()), ",\n    ", " or\n    ")
@@ -1405,7 +1406,7 @@ def parse_options(conf):
         "-S",
         "--state",
         "--province",
-        help="State/Province to search. May be specified multiple times.",
+        help="State/Province to search. May be specified multiple times or with commas.",
         type=str,
         action="append",
     )
@@ -1414,7 +1415,11 @@ def parse_options(conf):
 
     grp_search_district = grp_search.add_mutually_exclusive_group()
     grp_search_district.add_argument(
-        "-d", "--district", help="District to search. May be specified multiple times.", type=str, action="append"
+        "-d",
+        "--district",
+        help="District to search. May be specified multiple times or with commas.",
+        type=str,
+        action="append",
     )
     grp_search_district.add_argument("--all-districts", help="Search all districts.", action="store_true")
 
@@ -1437,13 +1442,16 @@ def parse_options(conf):
     grp_search.add_argument(
         "-c",
         "--division-code",
-        help="Only print this division. May be specified multiple times.",
+        help="Only print this division. May be specified multiple times or with commas.",
         type=str,
         action="append",
     )
     grp_search.add_argument(
         "--competition",
-        help=f"Only print this competition, one of {list(COMPETITIONS.values())}. May be specified multiple times.",
+        help=(
+            f"Only print this competition, one of {list(COMPETITIONS_VALUES)}. "
+            "May be specified multiple times or with commas."
+        ),
         type=str,
         action="append",
     )
@@ -1465,7 +1473,7 @@ def parse_options(conf):
     grp_output.add_argument(
         "-O",
         "--omit",
-        help="Item to skip printing. May be specified multiple times.",
+        help="Item to skip printing. May be specified multiple times or with commas.",
         type=str,
         action="append",
         default=conf.get("omit"),
@@ -1473,7 +1481,7 @@ def parse_options(conf):
     grp_output.add_argument(
         "-m",
         "--minimize",
-        help="Item to minimize when printing. May be specified multiple times.",
+        help="Item to minimize when printing. May be specified multiple times or with commas.",
         type=str,
         action="append",
         default=conf.get("minimize"),
@@ -1803,11 +1811,14 @@ def main():
             args.district[i] = "-".join([x.capitalize() for x in district.split("-")])
         check_option(args.district, "-d/--district", DISTRICTS.keys())
 
-    # check the values of the --competition option
+    # Check the values of the --competition option
     args.competition = expand_comma_lists(args.competition)
     check_option(args.competition, "--competiton", COMPETITIONS.keys())
 
-    # Check the values of the --state/--province, --all-states/--all-provinces, --all-us, --all-canada options.
+    # Check the values of the division code
+    args.division_code = expand_comma_lists(args.division_code)
+
+    # Check the values of the --state/--province, --all-us, --all-canada options.
     # Argparse already makes these options exclusive.
     # The web site allows for both lower and upper case for states. Upper case displays better.
     upper_case(args.state)

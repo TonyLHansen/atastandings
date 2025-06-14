@@ -1,3 +1,8 @@
+# 2025/06/11: 2026.06.10
+## Added
+- allow "," to be used with -c/--division-code
+## Changed
+- add "or with commas" to the descriptions of options that allow comma lists
 # 2025/05/03: 2025.05.03.1
 ## Changed
 - make `--use-web-standings-dates` the default caching algorithm
