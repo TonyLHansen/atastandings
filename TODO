@@ -1,3 +1,114 @@
-add --no- options to turn off defaults from the configuration file
+add options: --offline, --bzip2-cache, -gzip-cache, --no-xyz, --use-web-standings-dates, --update-cache, --all-districts/state, list of states/districtions, switch to httpx
+
+DONE add --no-dots option to turn off --dots default from the configuration file
+DONE add --offline, error if a cache file is not found
+DONE support gzip'd / bz2'd cache
+    --bzip2-cache, --no-bzip2-cache
+    --gzip-cache, --no-gzip-cache
+DONE change cache naming scheme to one that is shorter and reversible
+
+DONE add -w/--use-web-standings-dates for an alternative caching mechanism
+    use the State/World Standings updated on mm/dd/yyyy
+
+DONE add --update-cache using "State/World Standings updated on mm/dd/yyyy"
+
+DONE add --all-districts
+DONE add --all-states
+
+DONE convert from requests library to httpx
+
+DONE allow --state AA,BB,...
+DONE allow --district Rockies,Eastern,...
+DONE --minimize allow comma-separated values
+DONE --competition allow comma-separated values
+DONE --omit allow comma-separated values
+-- COMMITTED --
+
+
+add ATASTANDINGS environnment variable, add --connection-count, --retry-interval
+
+DONE a way to encode settings in an environment variable:
+  variable: true; key: ""
+DONE add a retry variable if there is a timeout
+    connection-count: 33
+    retry-interval: 20 (seconds)
+-- COMMITTED --
+
+add first cut at --output-json, minor cleanup
+
+DONE add --output-json
+    initial cut
+
+
+make --all-us / --all-canada usable with --states
+
 add time-based cache that keeps adding values
 
+
+add json output for time-based cache
+    include time of search
+    include search parameters
+
+create time-chart for a given set of search parameters ???
+       separate by divisions
+
+
+
+add pytest
+    use pre-filled database that uses lorem
+
+use Standings updated on dates in time-series?
+
+raw data collection
+
+
+test data collection
+
+
+
+
+
+
+You mentioned to me a JSON output file, but I wanted to explain how I'm
+using your script, which may inform future changes.  What I'm looking to
+do is not just see how everyone is doing, but I want to look at point
+history so I can see /where/ people got their points.  For example, if
+someone is sitting on 32 points, I want to see that their history is
+5/8/23/24/29/31/32.
+Using this data I see the deltas are:  5/3/15/1/5/2/1
+Using THIS data (and associated dates), I can surmise that they got 15
+from Pittsburg, and then have 5/3/1/5/2 from As and Bs, and the +1 at the
+end is most likely a 3rd at an A (2 points) that replace the 3rd at a B (1
+point).
+
+THIS is what I want the script to be able to help me compute.  The way I
+do it now is to download each update into its own webcache.  Then I can
+do:
+
+for cachedir in webcache/2* ; do ./atastandings -C $cachedir -T -B -m
+division -c B01B -d .... --competition combat-weapons -s <name> |& grep -i
+<person city> ; done) | awk '{print $NF,$0}' | sort -nu | cut -f2- -d' '
+
+This will give me the personal history over time for this competitor.
+
+
+
+I've also used the script to go beyond world-top-10.  What I do is search
+through all the districts and then sort the results for, e.g., the top 20:
+
+./atastandings -C ~/ATA/2024-2025/.webcache -c B01B -B -m division -d
+mid-america -d midwest -d north -d northeast -d northwest -d southeast -d
+south -d southwest -d rockies -T --competition combat-weapons | grep -v
+"DISTRICT STANDINGS FOR" | grep -v '^$' | awk '{print $NF,$0}' | sort -nr
+| cut -f2- -d' ' | head -20
+
+
+Then I know who to search for in more detailed form.
+
+You'll notice that here I do sort -nr because I want the highest scores at
+the front.  In the previous run I use sort -nu because I want to start
+from the lowest score, and I only want to see the changes.
+
+I can't think of an easy way to do the history with the script, but the
+ability to combine multiple districts and sorting is something that would
+be useful.
