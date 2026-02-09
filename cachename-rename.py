@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 
 """
-Convert old cache names to new cache names.
-Generate a shell script to do the renaming and bzip'ing.
-"""
+Convert old cache names to new cache names, or vice versa.
+Generate a shell script to do the renaming or (with -R) do the renames directly.
 
-# Old cache name:
-# atastandings.httpsatamartialartscomeventstournamentstandingsstatestandingscountryUSstategacodeBCOC
-# atastandings.httpsatamartialartscomeventstournamentstandingsworldsstandingscountryUScodeBCOC
-# New cache name:
-# atastandings.state_2dstandings_2f_3fcountry_3dUS_26state_3dga_26code_3dBCOC.bz2
-# atastandings.worlds_2dstandings_2f_3fcountry_3dUS_26code_3dBCOC.bz2
+Samples:
+
+Old cache name:
+   atastandings.httpsatamartialartscomeventstournamentstandingsstatestandingscountryUSstategacodeBCOC
+   atastandings.httpsatamartialartscomeventstournamentstandingsworldsstandingscountryUScodeBCOC
+New cache name:
+   atastandings.state_2dstandings_2f_3fcountry_3dUS_26state_3dga_26code_3dBCOC.bz2
+   atastandings.worlds_2dstandings_2f_3fcountry_3dUS_26code_3dBCOC.bz2
+"""
 
 import os
 import re
