@@ -1,4 +1,12 @@
-add options: --offline, --bzip2-cache, -gzip-cache, --no-xyz, --use-web-standings-dates, --update-cache, --all-districts/state, list of states/districtions, switch to httpx
+restrict to just girls/boys/women/men
+print defaults in usage strings
+print attempt 1/N for Timeouts
+add --keep-going after connection attempts
+option to go to next division on timeout
+catch keyboard interrupt and print a nice message instead of stack trace
+--newline between divisions
+
+DONE add options: --offline, --bzip2-cache, -gzip-cache, --no-xyz, --use-web-standings-dates, --update-cache, --all-districts/state, list of states/districtions, switch to httpx
 
 DONE add --no-dots option to turn off --dots default from the configuration file
 DONE add --offline, error if a cache file is not found

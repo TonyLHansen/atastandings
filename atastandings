@@ -304,7 +304,7 @@ def get_cache(args, cachename_base, url_type):
     try:
         verbose(args, f"looking for {cachename_base}")
 
-        (cachename, st) = cache_stat(cachename_base)
+        cachename, st = cache_stat(cachename_base)
         if not args.offline and args.use_time_based_cache:
             if st is not None:
                 verbose(
@@ -365,7 +365,7 @@ def get_url(args, url, url_type):
     cachename_base = f"{args.cache_directory}/{CACHE_URL_PREFIX}{urlname}"
 
     if not args.ignore_existing_cache:
-        (textlines, cret) = get_cache(args, cachename_base, url_type)
+        textlines, cret = get_cache(args, cachename_base, url_type)
         if textlines:
             return (textlines, cret)
 
@@ -491,7 +491,7 @@ def fix_html(s):
 
 def get_codes(args, url, url_type):
     """Retrieve a URL. Retrieve the list of codes as an array of [division-code, division-name]"""
-    (lines, _) = get_url(args, url, url_type)
+    lines, _ = get_url(args, url, url_type)
     lines = fgrep("code=", join_li_td_tr(lines))
     nl = []
     for l in lines:
@@ -507,7 +507,7 @@ def print_lines(lines):
 
 def get_info(args, code, region, url, border, url_type):  # pylint: disable=too-many-positional-arguments
     """Get the standings from this url"""
-    (lines, _) = get_url(args, url, url_type)
+    lines, _ = get_url(args, url, url_type)
     lines = trim_border(lines, border)
     dispcode = code[0].split("=")[1]
     for i, val in enumerate(lines):
@@ -1269,19 +1269,13 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     print(hdr)
 
     if print_example_preamble:
-        print(
-            """
+        print("""
     |# Sample Use Examples
     |
     |The following examples show some of the ways that the various options can be combined together.
     |All sample output uses fictitious names, and only shows the first 10 lines of the output.
     |
-    |""".replace(
-                "    |", ""
-            )[
-                1:
-            ]
-        )
+    |""".replace("    |", "")[1:])
     # pylint: enable=line-too-long
     sys.exit()
 
@@ -1289,8 +1283,7 @@ def print_readme_heading(args_actions, print_example_preamble=True):
 def print_readme_trailer():
     """Print the trailer of the readme file."""
     # pylint: disable=line-too-long
-    print(
-        """
+    print("""
     |# Installation
     |This program was written using python3, so you will need a python3 environment to run it.
     |You will also need the python `httpx` library.
@@ -1311,12 +1304,7 @@ def print_readme_trailer():
     |Or you can invoke the script directly with python3, as in `python3 atastandings` followed
     |by the options you desire.
     |You might need to execute it as `./atastandings` followed by the options you desire.
-    |""".replace(
-            "    |", ""
-        )[
-            1:
-        ]
-    )
+    |""".replace("    |", "")[1:])
     # pylint: enable=line-too-long
     sys.exit()
 
@@ -1460,38 +1448,43 @@ def parse_options(conf):
     # output options
     ################
     grp_output = parser.add_argument_group("Output Options")
+    dflt = conf.get("by-person", False)
     grp_output.add_argument(
-        "-b", "--by-person", help="Print the standings by name", action="store_true", default=conf.get("by-person")
+        "-b", "--by-person", help=f"Print the standings by name (default: {dflt})", action="store_true", default=dflt
     )
+    dflt = conf.get("by-person-with-divisions", False)
     grp_output.add_argument(
         "-B",
         "--by-person-with-divisions",
-        help="Print the standings by name",
+        help=f"Print the standings by name with divisions (default: {dflt})",
         action="store_true",
-        default=conf.get("by-person-with-divisions"),
+        default=dflt,
     )
+    dflt = conf.get("omit")
     grp_output.add_argument(
         "-O",
         "--omit",
-        help="Item to skip printing. May be specified multiple times or with commas.",
+        help=f"Item to skip printing. May be specified multiple times or with commas. (default: {dflt})",
         type=str,
         action="append",
-        default=conf.get("omit"),
+        default=dflt,
     )
+    dflt = conf.get("minimize")
     grp_output.add_argument(
         "-m",
         "--minimize",
-        help="Item to minimize when printing. May be specified multiple times or with commas.",
+        help=f"Item to minimize when printing. May be specified multiple times or with commas. (default: {dflt})",
         type=str,
         action="append",
-        default=conf.get("minimize"),
+        default=dflt,
     )
+    dflt = conf.get("list-division-codes", False)
     grp_search.add_argument(
         "-l",
         "--list-division-codes",
-        help="List the division codes instead of printing standings",
+        help=f"List the division codes instead of printing standings (default: {dflt})",
         action="store_true",
-        default=conf.get("list-division-codes"),
+        default=dflt,
     )
     grp_search.add_argument("-J", "--output-json", help=argparse.SUPPRESS, action="store_true")
     grp_search.add_argument("-P", "--print", help=argparse.SUPPRESS, action="store_true")
@@ -1500,35 +1493,39 @@ def parse_options(conf):
     # connection control options
     ################
     grp_conn = parser.add_argument_group("Connection Control Options")
+    dflt = conf.get("connection-count", 1)
     grp_conn.add_argument(
         "--connection-count",
-        help="Number of connection attempts per web page",
+        help=f"Number of connection attempts per web page (default: {dflt})",
         type=int,
-        default=conf.get("connection-count", 1),
+        default=dflt,
     )
+    dflt = conf.get("retry-interval", 30)
     grp_conn.add_argument(
         "--retry-interval",
-        help="Seconds between connection attempts when retrying",
+        help=f"Seconds between connection attempts when retrying (default: {dflt})",
         type=int,
-        default=conf.get("retry-interval", 30),
+        default=dflt,
     )
+    dflt = conf.get("request-interval", 1)
     grp_conn.add_argument(
         "--request-interval",
-        help="Seconds between successful connection attempts",
+        help=f"Seconds between successful connection attempts (default: {dflt})",
         type=int,
-        default=conf.get("request-interval", 1),
+        default=dflt,
     )
 
     ################
     # cache control options
     ################
     grp_cache = parser.add_argument_group("Cache Control Options")
+    dflt = conf.get("cache-directory", get_cache_dir())
     grp_cache.add_argument(
         "-C",
         "--cache-directory",
-        help="Keep a cache of the web pages in this directory.",
+        help=f"Keep a cache of the web pages in this directory (default: {dflt}).",
         type=str,
-        default=conf.get("cache-directory", get_cache_dir()),
+        default=dflt,
     )
     grp_cache_inc = grp_cache.add_mutually_exclusive_group()
     grp_cache_inc.add_argument(
@@ -1537,34 +1534,38 @@ def parse_options(conf):
         help="Ignore any existing cache of the web pages. (Still create one though.)",
         action="store_true",
     )
+    dflt = conf.get("offline", False)
     grp_cache_inc.add_argument(
         "--offline",
         "--no-offline",
-        help="Run offline using the cache. (Implies -T/--ignore-cache-times)",
+        help=f"Run offline using the cache. (Implies -T/--ignore-cache-times) (default: {dflt})",
         action=BooleanAction,
-        default=conf.get("offline", False),
+        default=dflt,
     )
     grp_cache_time = grp_cache.add_mutually_exclusive_group()
+    dflt = conf.get("ignore-cache", False)
     grp_cache_time.add_argument(
         "-T",
         "--ignore-cache",
         "--ignore-cache-times",
-        help="Do not timeout any existing cache of the web pages.",
+        help=f"Do not timeout any existing cache of the web pages (default: {dflt}).",
         action="store_true",
-        default=conf.get("ignore-cache", False),
+        default=dflt,
     )
+    dflt = conf.get("use-web-standings-dates", False)
     grp_cache_time.add_argument(
         "-w",
         "--use-web-standings-dates",
-        help="Verify 'standings updated' date in the file against the web page.",
+        help=f"Verify 'standings updated' date in the file against the web page (default: {dflt}).",
         action="store_true",
-        default=conf.get("use-web-standings-dates", False),
+        default=dflt,
     )
+    dflt = conf.get("use-time-based-cache", False)
     grp_cache_time.add_argument(
         "--use-time-based-cache",
-        help="Use a time-based 24-hour cache.",
+        help=f"Use a time-based 24-hour cache (default: {dflt}).",
         action="store_true",
-        default=conf.get("use-time-based-cache", False),
+        default=dflt,
     )
     grp_cache.add_argument(
         "-D", "--do-not-write-cache", help="Do not write a cache of the web pages.", action="store_true"
@@ -1574,38 +1575,42 @@ def parse_options(conf):
     )
 
     grp_cache_zip = grp_cache.add_mutually_exclusive_group()
+    dflt = conf.get("gzip-cache", False)
     grp_cache_zip.add_argument(
         "--gzip-cache",
         "--no-gzip-cache",
-        help="Save cache files using gzip",
+        help=f"Save cache files using gzip (default: {dflt})",
         action=BooleanAction,
-        default=conf.get("gzip-cache", False),
+        default=dflt,
     )
+    dflt = conf.get("bzip2-cache", False)
     grp_cache_zip.add_argument(
         "--bzip2-cache",
         "--no-bzip2-cache",
-        help="Save cache files using bzip2",
+        help=f"Save cache files using bzip2 (default: {dflt})",
         action=BooleanAction,
-        default=conf.get("bzip2-cache", False),
+        default=dflt,
     )
 
     ################
     # other options
     ################
     grp_other = parser.add_argument_group("Other Options")
+    dflt = conf.get("verbose", 0)
     grp_other.add_argument(
         "-v",
         "--verbose",
-        help="Verbose, print some debugging information. May be specified multiple times for higher verbosity levels.",
+        help=f"Verbose, print some debugging information. May be specified multiple times for higher verbosity levels. (default: {dflt})",
         action="count",
-        default=conf.get("verbose", 0),
+        default=dflt,
     )
+    dflt = conf.get("dots", False)
     grp_other.add_argument(
         "--dots",
         "--no-dots",
-        help="Print a dot, comma or semi-colon for each web page accessed.",
+        help=f"Print a dot, comma or semi-colon for each web page accessed (default: {dflt}).",
         action=BooleanAction,
-        default=conf.get("dots"),
+        default=dflt,
     )
     grp_other.add_argument("--extended-help", help="Show the preamble of the README", action="store_true")
     grp_other.add_argument("--update-cache", help="Update all cached files based.", action="store_true")
@@ -1720,7 +1725,7 @@ def update_cache_worldstate(args, base, standing_type):
     for fname in glob.glob(g):
         bfname = os.path.basename(fname)
         url = decode_url(bfname)
-        (_, updated) = get_url(args, url, standing_type)
+        _, updated = get_url(args, url, standing_type)
         print("+" if updated else "-", end="", file=sys.stderr)
         if updated:
             found_updated = True
@@ -1772,7 +1777,7 @@ def main():
     """main function"""
     conf = get_configuration()
     add_environment(conf)
-    (parser, args) = parse_options(conf)
+    parser, args = parse_options(conf)
 
     # check the data
     check_global_arrays()
@@ -1782,7 +1787,7 @@ def main():
         sys.exit()
 
     if args.update_cache:
-        (state_updated, world_updated) = update_cache(args)
+        state_updated, world_updated = update_cache(args)
         if state_updated:
             print("Cached state files were updated")
         if world_updated:
