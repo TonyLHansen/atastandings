@@ -404,10 +404,11 @@ def get_url(args, url, url_type):
         time.sleep(args.retry_interval)
 
     if r is None:
+        if args.keep_processing:
+            return (None, True)
         if args.connection_count > 1:
             sys.exit("Connection count reached")
-        else:
-            sys.exit(1)
+        sys.exit(1)
 
     if r.status_code >= 300:
         sys.exit(f"Accessing {url} returned the status code {r.status_code}")
@@ -1514,6 +1515,13 @@ def parse_options(conf):
         type=int,
         default=dflt,
     )
+    dflt = conf.get("keep-processing", False)
+    grp_conn.add_argument(
+        "--keep-processing",
+        help="Keep processing even if a connection fails.",
+        action="store_true",
+        default=dflt,
+    )
 
     ################
     # cache control options
@@ -1865,11 +1873,11 @@ def main():
     if args.generate_readme:
         old_stdout = start_readme(args)
 
-    if args.clean_cache:
-        clean_cache(args)
-
     if not args.worlds and not args.district and not args.state:
         args.worlds = True
+
+    if args.clean_cache:
+        clean_cache(args)
 
     try:
         if args.worlds:
@@ -1887,6 +1895,9 @@ def main():
 
     except BrokenPipeError:
         pass
+
+    except KeyboardInterrupt:
+        sys.exit(1)
 
     if args.generate_readme:
         stop_readme(args, old_stdout)
