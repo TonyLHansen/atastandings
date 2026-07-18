@@ -79,6 +79,9 @@ COMPETITIONS = {
 }
 COMPETITIONS_VALUES = COMPETITIONS.values()
 
+# These are the values that may be used with --rank
+RANKS = ["C", "B", "BA", "BC", "BP", "CA", "CC", "CP", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
 # These are options that will not show up in the
 # --help output. They are mostly used for maintenance
 # of the README.
@@ -779,12 +782,84 @@ def upper_case(lst):
             lst[i] = l.upper()
 
 
+def add_codes(codes, seen, items):
+    """Append items to codes while preserving order and deduplicating by code key."""
+    for code in items:
+        key = code[0]  # code=XXXX
+        if key not in seen:
+            seen.add(key)
+            codes.append(code)
+
+
+def select_codes(args, allcodes_provider):
+    """
+    Build division code list from CLI selectors.
+
+    allcodes_provider must be a zero-argument callable returning the same
+    structure as get_codes(): [["code=...", "Division Name"], ...]
+
+    The output from args.girls, args.boys, args.women, args.men are ORed together
+        If args.andopt is specified, then ANDed with args.rank
+        Else, args.rank is ORed with the other selectors.
+    """
+    found_codes = False
+    codes = []
+    seen = set()
+    allcodes = None
+
+    if args.division_code:
+        found_codes = True
+        add_codes(codes, seen, [[f"code={code}", ""] for code in args.division_code])
+
+    def get_allcodes():
+        nonlocal allcodes
+        if allcodes is None:
+            allcodes = allcodes_provider()
+            if args.verbose > 1:
+                print(f"allcodes={allcodes}", file=sys.stderr, flush=True)
+        return allcodes
+
+    gender_selected = args.girls or args.boys or args.women or args.men
+
+    def gender_match(code):
+        gcode = code[0].lower()[5]
+        return (
+            (args.girls and gcode == "g")
+            or (args.boys and gcode == "b")
+            or (args.women and gcode == "w")
+            or (args.men and gcode == "m")
+        )
+
+    # Keep current rank behavior: substring match in the extracted rank area.
+    def rank_match(code):
+        return any(rank in code[0][6:-1] for rank in args.rank)
+
+    if args.andopt:
+        # main() validates that --and only appears with both a gender selector and --rank.
+        if gender_selected and args.rank:
+            found_codes = True
+            add_codes(codes, seen, [code for code in get_allcodes() if gender_match(code) and rank_match(code)])
+    else:
+        if gender_selected:
+            found_codes = True
+            add_codes(codes, seen, [code for code in get_allcodes() if gender_match(code)])
+
+        if args.rank:
+            found_codes = True
+            add_codes(codes, seen, [code for code in get_allcodes() if rank_match(code)])
+
+    if not found_codes:
+        add_codes(codes, seen, get_allcodes())
+
+    if args.verbose > 1:
+        print(f"codes={codes}", file=sys.stderr, flush=True)
+
+    return codes
+
+
 def print_worlds(args):
     """Print the worlds standings"""
-    if args.division_code:
-        codes = [[f"code={code}", ""] for code in args.division_code]
-    else:
-        codes = get_codes(args, WORLDBASE, STANDINGS_WORLDS)
+    codes = select_codes(args, lambda: get_codes(args, WORLDBASE, STANDINGS_WORLDS))
 
     if args.list_division_codes:
         print("WORLD STANDINGS DIVISIONS")
@@ -1386,6 +1461,7 @@ def parse_options(conf):
 
     parser = argparse.ArgumentParser(description=__doc__, epilog=EPILOG)
     grp_search = parser.add_argument_group("Search Options")
+    grp_search_divisions = parser.add_argument_group("Search Divisions")
 
     grp_search_worlds = grp_search.add_mutually_exclusive_group()
     grp_search_worlds.add_argument("-W", "--worlds", help="Search the world standings.", action="store_true")
@@ -1429,13 +1505,6 @@ def parse_options(conf):
         default=99,
     )
     grp_search.add_argument(
-        "-c",
-        "--division-code",
-        help="Only print this division. May be specified multiple times or with commas.",
-        type=str,
-        action="append",
-    )
-    grp_search.add_argument(
         "--competition",
         help=(
             f"Only print this competition, one of {list(COMPETITIONS_VALUES)}. "
@@ -1443,6 +1512,46 @@ def parse_options(conf):
         ),
         type=str,
         action="append",
+    )
+
+    grp_search_divisions.add_argument(
+        "-c",
+        "--division-code",
+        help="Only print this division. May be specified multiple times or with commas. May be used with --girls, --boys, --women, --men and --rank.",
+        type=str,
+        action="append",
+    )
+    grp_search_divisions.add_argument(
+        "--girls",
+        help="Only print the girls' divisions. May be specified --division-code, --boys, --women, --men and --rank.",
+        action="store_true",
+    )
+    grp_search_divisions.add_argument(
+        "--boys",
+        help="Only print the boys' divisions. May be specified --division-code, --girls, --women, --men and --rank.",
+        action="store_true",
+    )
+    grp_search_divisions.add_argument(
+        "--women",
+        help="Only print the women's divisions. May be specified --division-code, --boys, --girls, --men and --rank.",
+        action="store_true",
+    )
+    grp_search_divisions.add_argument(
+        "--men",
+        help="Only print the men's divisions. May be specified --division-code, --boys, --girls, --women and --rank.",
+        action="store_true",
+    )
+    grp_search_divisions.add_argument(
+        "--rank",
+        help="Only print this rank. May be specified multiple times or with commas. May be used with --division-code, --girls, --boys, --women and --men.",
+        type=str,
+        action="append",
+    )
+    grp_search_divisions.add_argument(
+        "--and",
+        help="How to combine (--girls, --boys, --women, --men) with --rank. Default is 'or'.",
+        action="store_true",
+        dest="andopt",
     )
 
     ################
@@ -1757,12 +1866,12 @@ def expand_comma_lists(lst):
     create a new list AB,CD,EF,...
     """
     if lst is None:
-        return lst
-    ret = []
+        return []
+    ret = set()
     for l in lst:
         for nl in l.split(","):
-            ret.append(nl.strip())
-    return ret
+            ret.add(nl.strip())
+    return sorted(ret)
 
 
 def check_numeric_option(parser, val, name, min_value=1):
@@ -1841,6 +1950,15 @@ def main():
     if args.all_canada:
         args.state += CA_PROVINCES
     check_option(args.state, "-S/--state", US_STATES + CA_PROVINCES)
+
+    # Check the values of the ranks
+    upper_case(args.rank)
+    args.rank = expand_comma_lists(args.rank)
+    check_option(args.rank, "--rank", RANKS)
+
+    # --and requires both sides of the expression.
+    if args.andopt and (not (args.girls or args.boys or args.women or args.men) or not args.rank):
+        usage(parser, "--and requires at least one of --girls/--boys/--women/--men and at least one --rank")
 
     # Check the values of the connection settings.
     check_numeric_option(parser, args.connection_count, "--connection-count")

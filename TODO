@@ -1,10 +1,12 @@
-DONE print defaults in usage strings
-restrict to just girls/boys/women/men
+option for --girls/--boys/--women/--men divisions
+option for --rank (C,1,2,3,4,5,6,7,8) divisions
+option --or and --and for how to combine --girls/.../-men and --rank
 print attempt 1/N for Timeouts
-add --keep-going after connection attempts (mvoe to the next code)
-    option to go to next division on timeout
-DONE catch keyboard interrupt and print a nice message instead of stack trace
 --newline between divisions
+
+DONE print defaults in usage strings
+DONE add --keep-going after connection attempts -- go to next division on timeout
+DONE catch keyboard interrupt and print a nice message instead of stack trace
 
 DONE add options: --offline, --bzip2-cache, -gzip-cache, --no-xyz, --use-web-standings-dates, --update-cache, --all-districts/state, list of states/districtions, switch to httpx
 
