@@ -22,7 +22,7 @@ import httpx
 import yaml
 
 EPILOG = "-W and -S can be used together, or separately. If neither -W nor -S are set, the default is -W."
-ATABASE = "https://atamartialarts.com/events/tournament-standings/"
+ATABASE = "https://atamartialarts.com/myata/tournament-standings/"
 WORLD_SUFFIX = "worlds-standings"
 WORLDBASE = f"{ATABASE}{WORLD_SUFFIX}/"
 STATE_SUFFIX = "state-standings"
@@ -36,6 +36,11 @@ NAME_PREFIXES = ["van", "san", "de", "da", "los", "st.", "saint"]
 STANDINGS_DATE = {}
 STANDINGS_WORLDS = "worlds"
 STANDINGS_STATES = "states"
+
+LOGIN_URL = "https://atamartialarts.com/login"
+LOGIN_POST_URL = "https://atamartialarts.com/umbraco/Surface/Membership/MemberLogin"
+
+HTTP_CLIENT = None
 
 RANDOM_WORDS = []
 USED_WORDS = []
@@ -249,6 +254,128 @@ def get_cache_name(url):
     return "".join(ret)
 
 
+def get_http_client():
+    """Return a shared HTTP client with cookie/session state."""
+    # pylint: disable=global-statement
+    global HTTP_CLIENT
+    if HTTP_CLIENT is None:
+        HTTP_CLIENT = httpx.Client(follow_redirects=True)
+    return HTTP_CLIENT
+
+
+def is_login_page(text):
+    """Return True if the response body looks like the login form page."""
+    if not text:
+        return False
+    return "loginModel.Username" in text and "__RequestVerificationToken" in text
+
+
+def get_hidden_input_values(text):
+    """Extract hidden input name/value pairs from HTML text."""
+    values = {}
+    for name, value in re.findall(r'<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"', text):
+        values[name] = html.unescape(value)
+    return values
+
+
+def request_with_retries(args, method, url, **kwargs):
+    """Issue an HTTP request with retry behavior matching existing get_url semantics."""
+    client = get_http_client()
+    r = None
+    errmsg = None
+
+    verbose(args, f"http: starting {method.upper()} {url}")
+    for i in range(args.connection_count):
+        errmsg = None
+        try:
+            extra_verbose(args, 2, f"http: attempt {i+1}/{args.connection_count} {method.upper()} {url}")
+            r = client.request(method, url, **kwargs)
+        except httpx.ReadTimeout:
+            errmsg = f"Timeout for {url}"
+        except httpx.ConnectError:
+            errmsg = f"ConnectError for {url}"
+        except httpx.ReadError:
+            errmsg = f"ReadError for {url}"
+        except httpx.RequestError as e:
+            errmsg = f"HTTP Exception for {e.request.url} - {e}"
+        except httpx.HTTPError as e:
+            errmsg = f"HTTP Exception for {e.request.url} - {e}"
+        except Exception as e:
+            errmsg = f"Other conn error for {url}: {type(e)}: {e}"
+
+        if r:
+            extra_verbose(args, 2, f"http: response status={r.status_code} url={r.url}")
+            return r
+
+        verbose(args, f"http: attempt {i+1} failed: {errmsg}")
+        print(f"#{i+1}: {errmsg}", file=sys.stderr, flush=True)
+        time.sleep(args.retry_interval)
+
+    verbose(args, f"http: exhausted retries for {method.upper()} {url}")
+    return None
+
+
+def authenticate(args):
+    """Authenticate to ATA and keep session cookies in the shared HTTP client."""
+    if not args.username or not args.password:
+        verbose(args, "auth: skipped because username/password not provided")
+        return False
+
+    verbose(args, f"auth: begin user={args.username}")
+    verbose(args, f"auth: GET {LOGIN_URL}")
+    login_page = request_with_retries(args, "GET", LOGIN_URL)
+    if login_page is None:
+        verbose(args, "auth: failed to fetch login page")
+        return False
+
+    hidden = get_hidden_input_values(login_page.text)
+    token = hidden.get("__RequestVerificationToken")
+    if not token:
+        verbose(args, "auth: login page missing __RequestVerificationToken")
+        return False
+
+    verbose(args, f"auth: extracted token length={len(token)}")
+
+    payload = {
+        "loginModel.Username": args.username,
+        "loginModel.Password": args.password,
+        "loginModel.RedirectUrl": "",
+        "loginModel.RememberMe": "true",
+        "__RequestVerificationToken": token,
+    }
+    if "ufprt" in hidden:
+        payload["ufprt"] = hidden["ufprt"]
+        verbose(args, "auth: included ufprt token")
+
+    headers = {
+        "Origin": "https://atamartialarts.com",
+        "Referer": LOGIN_URL,
+    }
+
+    verbose(args, f"auth: POST {LOGIN_POST_URL}")
+    login_post = request_with_retries(args, "POST", LOGIN_POST_URL, data=payload, headers=headers)
+    if login_post is None:
+        verbose(args, "auth: login POST failed")
+        return False
+
+    verbose(args, f"auth: login POST status={login_post.status_code} final_url={login_post.url}")
+
+    # Confirm we are no longer on a login page and that identity cookie is present.
+    client = get_http_client()
+    has_identity_cookie = (
+        ".AspNetCore.Identity.Application" in client.cookies
+        or "AspNetCore.Identity.Application" in client.cookies
+    )
+    still_login_page = is_login_page(login_post.text)
+    verbose(args, f"auth: identity_cookie={has_identity_cookie} still_login_page={still_login_page}")
+    if has_identity_cookie and not still_login_page:
+        verbose(args, "auth: success")
+        return True
+
+    verbose(args, "auth: failed validation after login POST")
+    return False
+
+
 def extra_verbose(args, level, msg):
     """
     If args.verbose, print the message.
@@ -379,32 +506,8 @@ def get_url(args, url, url_type):
 
     dots(args, ":")
 
-    r = None
-    errmsg = None
     verbose(args, f"getting url={url}")
-    for i in range(args.connection_count):
-        errmsg = None
-        try:
-            r = httpx.get(url)
-        except httpx.ReadTimeout:
-            errmsg = f"Timeout for {url}"
-        except httpx.ConnectError:
-            errmsg = f"ConnectError for {url}"
-        except httpx.ReadError:
-            errmsg = f"ReadError for {url}"
-        except httpx.RequestError as e:
-            errmsg = f"HTTP Exception for {e.request.url} - {e}"
-        except httpx.HTTPError as e:
-            errmsg = f"HTTP Exception for {e.request.url} - {e}"
-        except Exception as e:
-            errmsg = f"Other conn error for {url}: {type(e)}: {e}"
-
-        if r:
-            break
-
-        print(f"#{i+1}: {errmsg}", file=sys.stderr, flush=True)
-        errmsg = None
-        time.sleep(args.retry_interval)
+    r = request_with_retries(args, "GET", url)
 
     if r is None:
         if args.keep_processing:
@@ -412,6 +515,29 @@ def get_url(args, url, url_type):
         if args.connection_count > 1:
             sys.exit("Connection count reached")
         sys.exit(1)
+
+    if is_login_page(r.text):
+        verbose(args, f"auth: login page detected while fetching {url}")
+        if not args.username or not args.password:
+            sys.exit(
+                "Received login page. Set --username/--password or "
+                "ATASTANDINGS_USERNAME/ATASTANDINGS_PASSWORD to enable authenticated access."
+            )
+
+        verbose(args, "auth: attempting authentication and retry")
+        if not authenticate(args):
+            sys.exit("Authentication failed. Check your ATA credentials.")
+
+        r = request_with_retries(args, "GET", url)
+        if r is None:
+            if args.keep_processing:
+                return (None, True)
+            sys.exit(1)
+        verbose(args, f"auth: retry fetch status={r.status_code}")
+        if is_login_page(r.text):
+            verbose(args, "auth: retry still returned login page")
+            sys.exit("Authentication did not grant access to the requested URL.")
+        verbose(args, "auth: retry fetch succeeded")
 
     if r.status_code >= 300:
         sys.exit(f"Accessing {url} returned the status code {r.status_code}")
@@ -1627,6 +1753,20 @@ def parse_options(conf):
         "--keep-processing",
         help="Keep processing even if a connection fails.",
         action="store_true",
+        default=dflt,
+    )
+    dflt = conf.get("username", os.getenv("ATASTANDINGS_USERNAME"))
+    grp_conn.add_argument(
+        "--username",
+        help="ATA login username/email (default: ATASTANDINGS_USERNAME env var if set).",
+        type=str,
+        default=dflt,
+    )
+    dflt = conf.get("password", os.getenv("ATASTANDINGS_PASSWORD"))
+    grp_conn.add_argument(
+        "--password",
+        help="ATA login password (default: ATASTANDINGS_PASSWORD env var if set).",
+        type=str,
         default=dflt,
     )
 

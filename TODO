@@ -4,6 +4,13 @@ remove "." from end of option descriptions
 print attempt 1/N for Timeouts
 --newline between divisions
 
+DONE implement authentication and new URLs
+    https://atamartialarts.com/login
+    https://atamartialarts.com/myata/tournament-standings/
+    https://atamartialarts.com/myata/tournament-standings/worlds-standings/
+    https://atamartialarts.com/myata/tournament-standings/team-sparring-standings/
+    https://atamartialarts.com/myata/tournament-standings/state-standings/
+
 DONE option for --girls/--boys/--women/--men divisions
 DONE option for --rank (C,1,2,3,4,5,6,7,8) divisions
 DONE option --and for how to combine --girls/.../-men and --rank
