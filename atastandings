@@ -18,6 +18,7 @@ import re
 import sys
 import time
 
+from http.cookiejar import MozillaCookieJar
 import httpx
 import yaml
 
@@ -41,6 +42,7 @@ LOGIN_URL = "https://atamartialarts.com/login"
 LOGIN_POST_URL = "https://atamartialarts.com/umbraco/Surface/Membership/MemberLogin"
 
 HTTP_CLIENT = None
+COOKIE_JAR = None
 
 RANDOM_WORDS = []
 USED_WORDS = []
@@ -254,12 +256,19 @@ def get_cache_name(url):
     return "".join(ret)
 
 
-def get_http_client():
+def get_http_client(args):
     """Return a shared HTTP client with cookie/session state."""
     # pylint: disable=global-statement
     global HTTP_CLIENT
+    global COOKIE_JAR
+    if COOKIE_JAR is None and args.cookies is not None:
+        COOKIE_JAR = MozillaCookieJar(args.cookies)
+        try:
+            COOKIE_JAR.load(ignore_discard=True, ignore_expires=True)
+        except FileNotFoundError:
+            print("Cookie file not found. Starting with a fresh session.", file=sys.stderr, flush=True)
     if HTTP_CLIENT is None:
-        HTTP_CLIENT = httpx.Client(follow_redirects=True)
+        HTTP_CLIENT = httpx.Client(follow_redirects=True, cookies=COOKIE_JAR)
     return HTTP_CLIENT
 
 
@@ -280,7 +289,7 @@ def get_hidden_input_values(text):
 
 def request_with_retries(args, method, url, **kwargs):
     """Issue an HTTP request with retry behavior matching existing get_url semantics."""
-    client = get_http_client()
+    client = get_http_client(args)
     r = None
     errmsg = None
 
@@ -361,7 +370,7 @@ def authenticate(args):
     verbose(args, f"auth: login POST status={login_post.status_code} final_url={login_post.url}")
 
     # Confirm we are no longer on a login page and that identity cookie is present.
-    client = get_http_client()
+    client = get_http_client(args)
     has_identity_cookie = (
         ".AspNetCore.Identity.Application" in client.cookies
         or "AspNetCore.Identity.Application" in client.cookies
@@ -1769,6 +1778,13 @@ def parse_options(conf):
         type=str,
         default=dflt,
     )
+    dflt = conf.get("cookies", os.getenv("COOKIE_FILE"))
+    grp_conn.add_argument(
+        "--cookies",
+        help="HTTP Cookie File (default: COOKIE_FILE env var if set).",
+        type=str,
+        default=dflt,
+    )
 
     ################
     # cache control options
@@ -2158,6 +2174,8 @@ def main():
     if args.generate_readme:
         stop_readme(args, old_stdout)
 
+    if COOKIE_JAR is not None:
+        COOKIE_JAR.save(ignore_discard=True, ignore_expires=True)
 
 if __name__ == "__main__":
     main()
