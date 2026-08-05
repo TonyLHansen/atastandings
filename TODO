@@ -1,9 +1,12 @@
-option for --girls/--boys/--women/--men divisions
-option for --rank (C,1,2,3,4,5,6,7,8) divisions
-option --or and --and for how to combine --girls/.../-men and --rank
+remove "." from end of option descriptions
+
+
 print attempt 1/N for Timeouts
 --newline between divisions
 
+DONE option for --girls/--boys/--women/--men divisions
+DONE option for --rank (C,1,2,3,4,5,6,7,8) divisions
+DONE option --and for how to combine --girls/.../-men and --rank
 DONE print defaults in usage strings
 DONE add --keep-going after connection attempts -- go to next division on timeout
 DONE catch keyboard interrupt and print a nice message instead of stack trace

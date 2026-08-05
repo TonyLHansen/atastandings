@@ -894,22 +894,19 @@ def print_districts(args, need_nl):
             codes = [[f"code={code}", ""] for code in args.division_code]
 
         if args.list_division_codes:
-            if not args.division_code:
-                # The codes are the set of the codes from all of the states.
-                # We don't use the world's set of codes because we also need
-                # any color belt divisions.
-                codes = []
-                codeset = set()
+            # Build the district's complete code list and let select_codes apply
+            # --division-code, gender/rank selectors, and --and semantics.
+            def district_allcodes_provider():
+                allcodes = []
                 for state in DISTRICTS[district]:
                     country = get_country(state)
-                    ncodes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES)
-                    for code in ncodes:
-                        if code[0] not in codeset:
-                            codes.append(code)
-                            codeset.add(code[0])
+                    allcodes += get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES)
+                return allcodes
+
+            codes = select_codes(args, district_allcodes_provider)
 
             print(f"DISTRICT STANDINGS DIVISIONS FOR {district}")
-            for code in codes:
+            for code in sorted(codes):
                 print(f"{code[0].split('=')[1]}: {code[1]}")
 
         else:
@@ -921,9 +918,10 @@ def print_districts(args, need_nl):
 
             for state in DISTRICTS[district]:
                 country = get_country(state)
-                if not args.division_code:
-                    country = get_country(state)
-                    codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES)
+                codes = select_codes(
+                    args,
+                    lambda: get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES),
+                )
 
                 for code in codes:
                     info = get_info(
@@ -973,10 +971,10 @@ def print_states(args, need_nl):
 
         country = get_country(state)
 
-        if args.division_code:
-            codes = [[f"code={code}", ""] for code in args.division_code]
-        else:
-            codes = get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES)
+        codes = select_codes(
+            args,
+            lambda: get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES),
+        )
 
         if args.list_division_codes:
             print(f"STATE STANDINGS DIVISIONS FOR {state}")
