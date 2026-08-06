@@ -19,8 +19,8 @@ import sys
 import time
 
 from http.cookiejar import MozillaCookieJar
-import httpx
-import yaml
+import httpx # pip3 install httpx
+import yaml # pip3 install pyyaml
 
 EPILOG = "-W and -S can be used together, or separately. If neither -W nor -S are set, the default is -W."
 ATABASE = "https://atamartialarts.com/myata/tournament-standings/"
