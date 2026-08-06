@@ -387,6 +387,65 @@ def initialize_cookie_jar(args):
         args.cookie_jar = deserialize_cookie_jar(cookie_value)
 
 
+def resolve_auth_password(args):
+    """Resolve auth password from CLI or keyring.
+
+    Returns: (password, source, reason)
+      password: resolved password or None
+      source: human-readable source string or None
+      reason: None on success, otherwise a reason code
+    """
+    if not args.username:
+        return (None, None, "missing-username")
+
+    if args.password_key:
+        verbose(args, f"auth: looking up password in keyring service '{args.password_key}' for user '{args.username}'")
+        try:
+            password = keyring.get_password(args.password_key, args.username)
+        except Exception as e:  # pragma: no cover
+            verbose(args, f"auth: keyring password lookup failed: {type(e).__name__}: {e}")
+            return (None, None, "password-key-error")
+        if not password:
+            verbose(args, f"auth: keyring has no password for service '{args.password_key}' and user '{args.username}'")
+            return (None, None, "password-key-not-found")
+        return (password, f"keyring:{args.password_key}", None)
+
+    if args.password:
+        verbose(args, "auth: using password from --password / ATASTANDINGS_PASSWORD")
+        return (args.password, "cli-or-env", None)
+
+    return (None, None, "missing-password")
+
+
+def auth_failure_message(args, reason):
+    """Return a user-facing authentication failure message for a reason code."""
+    if reason == "missing-username":
+        return "Authentication failed: missing --username (or username config value)."
+    if reason == "missing-password":
+        return (
+            "Authentication failed: no password source configured. "
+            "Set --password or --password-key (or ATASTANDINGS_PASSWORD)."
+        )
+    if reason == "password-key-not-found":
+        return (
+            "Authentication failed: keyring password was not found for "
+            f"service '{args.password_key}' and user '{args.username}'."
+        )
+    if reason == "password-key-error":
+        return "Authentication failed: keyring password lookup failed."
+    if reason == "login-page-fetch-failed":
+        return "Authentication failed: could not fetch the login page."
+    if reason == "missing-verification-token":
+        return "Authentication failed: login page did not provide a verification token."
+    if reason == "login-post-failed":
+        return "Authentication failed: login POST request failed."
+    if reason == "missing-identity-cookie":
+        return "Authentication failed: login completed but no identity session cookie was set."
+    if reason == "still-login-page":
+        return "Authentication failed: login response still appears to be the login page."
+    return "Authentication failed. Check your ATA credentials and login settings."
+
+
 def is_login_page(text):
     """Return True if the response body looks like the login form page."""
     if not text:
@@ -440,27 +499,27 @@ def request_with_retries(args, method, url, **kwargs):
 
 
 def authenticate(args):
-    """Authenticate to ATA and keep session cookies in the shared HTTP client."""
-    password = args.password
-    if args.password_key:
-        password = keyring.get_password(args.password_key, args.username)
+    """Authenticate to ATA and keep session cookies in the shared HTTP client.
 
-    if not args.username or not password:
-        verbose(args, "auth: skipped because username/password not provided")
-        return False
+    Returns: (success: bool, reason: str)
+    """
+    password, source, reason = resolve_auth_password(args)
+    if reason:
+        verbose(args, f"auth: cannot start authentication: {reason}")
+        return (False, reason)
 
-    verbose(args, f"auth: begin user={args.username}")
+    verbose(args, f"auth: begin user={args.username} password_source={source}")
     verbose(args, f"auth: GET {LOGIN_URL}")
     login_page = request_with_retries(args, "GET", LOGIN_URL)
     if login_page is None:
         verbose(args, "auth: failed to fetch login page")
-        return False
+        return (False, "login-page-fetch-failed")
 
     hidden = get_hidden_input_values(login_page.text)
     token = hidden.get("__RequestVerificationToken")
     if not token:
         verbose(args, "auth: login page missing __RequestVerificationToken")
-        return False
+        return (False, "missing-verification-token")
 
     verbose(args, f"auth: extracted token length={len(token)}")
 
@@ -484,7 +543,7 @@ def authenticate(args):
     login_post = request_with_retries(args, "POST", LOGIN_POST_URL, data=payload, headers=headers)
     if login_post is None:
         verbose(args, "auth: login POST failed")
-        return False
+        return (False, "login-post-failed")
 
     verbose(args, f"auth: login POST status={login_post.status_code} final_url={login_post.url}")
 
@@ -498,10 +557,13 @@ def authenticate(args):
     verbose(args, f"auth: identity_cookie={has_identity_cookie} still_login_page={still_login_page}")
     if has_identity_cookie and not still_login_page:
         verbose(args, "auth: success")
-        return True
+        return (True, "success")
 
-    verbose(args, "auth: failed validation after login POST")
-    return False
+    if still_login_page:
+        verbose(args, "auth: failed validation after login POST (still on login page)")
+        return (False, "still-login-page")
+    verbose(args, "auth: failed validation after login POST (identity cookie not set)")
+    return (False, "missing-identity-cookie")
 
 
 def extra_verbose(args, level, msg):
@@ -646,15 +708,10 @@ def get_url(args, url, url_type):
 
     if is_login_page(r.text):
         verbose(args, f"auth: login page detected while fetching {url}")
-        if not args.username or not args.password:
-            sys.exit(
-                "Received login page. Set --username/--password or "
-                "ATASTANDINGS_USERNAME/ATASTANDINGS_PASSWORD to enable authenticated access."
-            )
-
         verbose(args, "auth: attempting authentication and retry")
-        if not authenticate(args):
-            sys.exit("Authentication failed. Check your ATA credentials.")
+        auth_ok, auth_reason = authenticate(args)
+        if not auth_ok:
+            sys.exit(auth_failure_message(args, auth_reason))
 
         r = request_with_retries(args, "GET", url)
         if r is None:
@@ -2347,7 +2404,7 @@ def main():
     if args.cookie_key:
         if args.http_client is not None:
             cookie_value = serialize_cookie_jar(args.http_client.cookies.jar)
-        keyring.set_password(args.cookie_key, args.username, cookie_value)
+            keyring.set_password(args.cookie_key, args.username, cookie_value)
     elif args.cookie_jar is not None:
         args.cookie_jar.save(ignore_discard=True, ignore_expires=True)
 
