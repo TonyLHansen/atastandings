@@ -19,7 +19,7 @@ import sys
 from http.cookies import SimpleCookie
 import time
 
-from http.cookiejar import MozillaCookieJar
+from http.cookiejar import Cookie, CookieJar, MozillaCookieJar
 import httpx # pip3 install httpx
 import keyring # pip3 install keyring
 import yaml # pip3 install pyyaml
@@ -46,6 +46,8 @@ LOGIN_POST_URL = "https://atamartialarts.com/umbraco/Surface/Membership/MemberLo
 RANDOM_WORDS = []
 USED_WORDS = []
 RANDOM_NAME_MAP = {}
+
+COOKIE_KEYRING_FORMAT = "atastandings-cookiejar-v1"
 
 OMIT_CHOICES = ["location", "place", "points", "region", "division", "code"]
 # add to minimized() when adding to this list
@@ -257,33 +259,132 @@ def get_cache_name(url):
 
 def get_http_client(args):
     """Return a shared HTTP client with cookie/session state."""
-    initial_cookies = None
+    if args.http_client is None:
+        args.http_client = httpx.Client(
+            follow_redirects=True,
+            cookies=args.cookie_jar,
+        )
+    return args.http_client
 
-    if args.cookie_key is not None:
-        cookie_value = keyring.get_password(args.cookie_key, args.username)
-        if cookie_value:
-            try:
-                initial_cookies = json.loads(cookie_value)
-                if not isinstance(initial_cookies, dict):
-                    initial_cookies = None
-            except json.JSONDecodeError:
-                parsed = SimpleCookie()
-                parsed.load(cookie_value)
-                initial_cookies = {name: morsel.value for name, morsel in parsed.items()}
 
-    if args.cookie_jar is None and args.cookie_file is not None:
+def cookiejar_from_mapping(mapping):
+    """Create a CookieJar from a simple name/value mapping."""
+    cookie_jar = CookieJar()
+    for name, value in mapping.items():
+        cookie_jar.set_cookie(
+            Cookie(
+                version=0,
+                name=name,
+                value=value,
+                port=None,
+                port_specified=False,
+                domain="atamartialarts.com",
+                domain_specified=False,
+                domain_initial_dot=False,
+                path="/",
+                path_specified=True,
+                secure=True,
+                expires=None,
+                discard=True,
+                comment=None,
+                comment_url=None,
+                rest={},
+                rfc2109=False,
+            )
+        )
+    return cookie_jar
+
+
+def deserialize_cookie_jar(cookie_value):
+    """Deserialize cookie storage from keyring to a CookieJar."""
+    if not cookie_value:
+        return None
+
+    try:
+        payload = json.loads(cookie_value)
+    except json.JSONDecodeError:
+        payload = None
+
+    if isinstance(payload, dict) and payload.get("format") == COOKIE_KEYRING_FORMAT:
+        cookie_jar = CookieJar()
+        for item in payload.get("cookies", []):
+            cookie_jar.set_cookie(
+                Cookie(
+                    version=item.get("version"),
+                    name=item["name"],
+                    value=item.get("value"),
+                    port=item.get("port"),
+                    port_specified=item.get("port_specified", False),
+                    domain=item["domain"],
+                    domain_specified=item.get("domain_specified", False),
+                    domain_initial_dot=item.get("domain_initial_dot", False),
+                    path=item["path"],
+                    path_specified=item.get("path_specified", True),
+                    secure=item.get("secure", False),
+                    expires=item.get("expires"),
+                    discard=item.get("discard", True),
+                    comment=item.get("comment"),
+                    comment_url=item.get("comment_url"),
+                    rest=item.get("rest", {}),
+                    rfc2109=item.get("rfc2109", False),
+                )
+            )
+        return cookie_jar
+
+    # Backward compatibility with previous versions that stored JSON mappings.
+    if isinstance(payload, dict):
+        return cookiejar_from_mapping(payload)
+
+    # Backward compatibility with previous versions that stored cookie header text.
+    parsed = SimpleCookie()
+    parsed.load(cookie_value)
+    if parsed:
+        return cookiejar_from_mapping({name: morsel.value for name, morsel in parsed.items()})
+
+    return None
+
+
+def serialize_cookie_jar(cookie_jar):
+    """Serialize a CookieJar to a full-fidelity JSON string for keyring."""
+    cookies = []
+    for cookie in cookie_jar:
+        cookies.append(
+            {
+                "version": cookie.version,
+                "name": cookie.name,
+                "value": cookie.value,
+                "port": cookie.port,
+                "port_specified": cookie.port_specified,
+                "domain": cookie.domain,
+                "domain_specified": cookie.domain_specified,
+                "domain_initial_dot": cookie.domain_initial_dot,
+                "path": cookie.path,
+                "path_specified": cookie.path_specified,
+                "secure": cookie.secure,
+                "expires": cookie.expires,
+                "discard": cookie.discard,
+                "comment": cookie.comment,
+                "comment_url": cookie.comment_url,
+                "rest": getattr(cookie, "_rest", {}),
+                "rfc2109": cookie.rfc2109,
+            }
+        )
+    return json.dumps({"format": COOKIE_KEYRING_FORMAT, "cookies": cookies})
+
+
+def initialize_cookie_jar(args):
+    """Initialize args.cookie_jar once at startup from file or keyring."""
+    if args.cookie_file is not None:
         args.cookie_jar = MozillaCookieJar(args.cookie_file)
         try:
             args.cookie_jar.load(ignore_discard=True, ignore_expires=True)
         except FileNotFoundError:
             print("Cookie file not found. Starting with a fresh session.", file=sys.stderr, flush=True)
+        return
 
-    if args.http_client is None:
-        args.http_client = httpx.Client(
-            follow_redirects=True,
-            cookies=args.cookie_jar if args.cookie_jar is not None else initial_cookies,
-        )
-    return args.http_client
+    if args.cookie_key is not None:
+        cookie_value = keyring.get_password(args.cookie_key, args.username)
+        args.cookie_jar = deserialize_cookie_jar(cookie_value)
 
 
 def is_login_page(text):
@@ -2194,6 +2295,8 @@ def main():
     if (args.password_key or args.cookie_key) and not args.username:
         usage(parser, "--username is required when using --password-key or --cookie-key")
 
+    initialize_cookie_jar(args)
+
     if args.extended_help:
         # pylint: disable=protected-access
         print_readme_heading(parser._actions, False)
@@ -2242,9 +2345,8 @@ def main():
         stop_readme(args, old_stdout)
 
     if args.cookie_key:
-        cookie_value = ""
         if args.http_client is not None:
-            cookie_value = json.dumps(dict(args.http_client.cookies.items()))
+            cookie_value = serialize_cookie_jar(args.http_client.cookies.jar)
         keyring.set_password(args.cookie_key, args.username, cookie_value)
     elif args.cookie_jar is not None:
         args.cookie_jar.save(ignore_discard=True, ignore_expires=True)
