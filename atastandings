@@ -16,10 +16,12 @@ import os
 import random
 import re
 import sys
+from http.cookies import SimpleCookie
 import time
 
 from http.cookiejar import MozillaCookieJar
 import httpx # pip3 install httpx
+import keyring # pip3 install keyring
 import yaml # pip3 install pyyaml
 
 EPILOG = "-W and -S can be used together, or separately. If neither -W nor -S are set, the default is -W."
@@ -40,9 +42,6 @@ STANDINGS_STATES = "states"
 
 LOGIN_URL = "https://atamartialarts.com/login"
 LOGIN_POST_URL = "https://atamartialarts.com/umbraco/Surface/Membership/MemberLogin"
-
-HTTP_CLIENT = None
-COOKIE_JAR = None
 
 RANDOM_WORDS = []
 USED_WORDS = []
@@ -258,18 +257,33 @@ def get_cache_name(url):
 
 def get_http_client(args):
     """Return a shared HTTP client with cookie/session state."""
-    # pylint: disable=global-statement
-    global HTTP_CLIENT
-    global COOKIE_JAR
-    if COOKIE_JAR is None and args.cookie_file is not None:
-        COOKIE_JAR = MozillaCookieJar(args.cookie_file)
+    initial_cookies = None
+
+    if args.cookie_key is not None:
+        cookie_value = keyring.get_password(args.cookie_key, args.username)
+        if cookie_value:
+            try:
+                initial_cookies = json.loads(cookie_value)
+                if not isinstance(initial_cookies, dict):
+                    initial_cookies = None
+            except json.JSONDecodeError:
+                parsed = SimpleCookie()
+                parsed.load(cookie_value)
+                initial_cookies = {name: morsel.value for name, morsel in parsed.items()}
+
+    if args.cookie_jar is None and args.cookie_file is not None:
+        args.cookie_jar = MozillaCookieJar(args.cookie_file)
         try:
-            COOKIE_JAR.load(ignore_discard=True, ignore_expires=True)
+            args.cookie_jar.load(ignore_discard=True, ignore_expires=True)
         except FileNotFoundError:
             print("Cookie file not found. Starting with a fresh session.", file=sys.stderr, flush=True)
-    if HTTP_CLIENT is None:
-        HTTP_CLIENT = httpx.Client(follow_redirects=True, cookies=COOKIE_JAR)
-    return HTTP_CLIENT
+
+    if args.http_client is None:
+        args.http_client = httpx.Client(
+            follow_redirects=True,
+            cookies=args.cookie_jar if args.cookie_jar is not None else initial_cookies,
+        )
+    return args.http_client
 
 
 def is_login_page(text):
@@ -326,7 +340,11 @@ def request_with_retries(args, method, url, **kwargs):
 
 def authenticate(args):
     """Authenticate to ATA and keep session cookies in the shared HTTP client."""
-    if not args.username or not args.password:
+    password = args.password
+    if args.password_key:
+        password = keyring.get_password(args.password_key, args.username)
+
+    if not args.username or not password:
         verbose(args, "auth: skipped because username/password not provided")
         return False
 
@@ -347,7 +365,7 @@ def authenticate(args):
 
     payload = {
         "loginModel.Username": args.username,
-        "loginModel.Password": args.password,
+        "loginModel.Password": password,
         "loginModel.RedirectUrl": "",
         "loginModel.RememberMe": "true",
         "__RequestVerificationToken": token,
@@ -1392,8 +1410,16 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |Defaults to the `ATASTANDINGS_USERNAME` environment variable if set.
     |* `--password PASSWORD` -- ATA login password.
     |Defaults to the `ATASTANDINGS_PASSWORD` environment variable if set.
+    |* `--password-key PASSWORD-KEY` -- keyring service key for password lookup.
+    |Uses `keyring.get_password(PASSWORD-KEY, USERNAME)`.
+    |Cannot be used with `--password`.
     |* `--cookie-file PATH` -- Cookie jar file used to load/save session cookies.
     |Defaults to the `COOKIE_FILE` environment variable if set.
+    |* `--cookie-key COOKIE-KEY` -- keyring service key for cookie persistence.
+    |Uses `keyring.get_password(COOKIE-KEY, USERNAME)` at startup and
+    |`keyring.set_password(COOKIE-KEY, USERNAME, COOKIE-VALUE)` on exit.
+    |Cannot be used with `--cookie-file`.
+    |`--username` is required when using `--password-key` or `--cookie-key`.
     |
     |## Web Cache
     |By default, `atastandings` maintains a cache of the web sites, so that you can have faster response times
@@ -1793,10 +1819,24 @@ def parse_options(conf):
         type=str,
         default=dflt,
     )
+    dflt = conf.get("password-key")
+    grp_user.add_argument(
+        "--password-key",
+        help="Keyring service key for looking up the ATA password.",
+        type=str,
+        default=dflt,
+    )
     dflt = conf.get("cookie-file", os.getenv("COOKIE_FILE"))
     grp_user.add_argument(
         "--cookie-file",
         help="HTTP Cookie File (default: COOKIE_FILE env var if set).",
+        type=str,
+        default=dflt,
+    )
+    dflt = conf.get("cookie-key")
+    grp_user.add_argument(
+        "--cookie-key",
+        help="Keyring service key for loading/saving ATA session cookies.",
         type=str,
         default=dflt,
     )
@@ -1909,7 +1949,8 @@ def parse_options(conf):
             grp_other.add_argument(a, arg, help=argparse.SUPPRESS, type=str)
         else:
             grp_other.add_argument(a, arg, help=argparse.SUPPRESS, action="store_true")
-    return (parser, parser.parse_args())
+    args = parser.parse_args()
+    return (parser, args)
 
 
 def get_configuration():
@@ -2065,6 +2106,9 @@ def main():
     add_environment(conf)
     parser, args = parse_options(conf)
 
+    args.http_client = None
+    args.cookie_jar = None
+
     # check the data
     check_global_arrays()
 
@@ -2142,6 +2186,14 @@ def main():
     if not args.output_json and not args.print:
         args.print = True
 
+    # Check user management option compatibility.
+    if args.password and args.password_key:
+        usage(parser, "--password and --password-key cannot be used together")
+    if args.cookie_file and args.cookie_key:
+        usage(parser, "--cookie-file and --cookie-key cannot be used together")
+    if (args.password_key or args.cookie_key) and not args.username:
+        usage(parser, "--username is required when using --password-key or --cookie-key")
+
     if args.extended_help:
         # pylint: disable=protected-access
         print_readme_heading(parser._actions, False)
@@ -2189,8 +2241,13 @@ def main():
     if args.generate_readme:
         stop_readme(args, old_stdout)
 
-    if COOKIE_JAR is not None:
-        COOKIE_JAR.save(ignore_discard=True, ignore_expires=True)
+    if args.cookie_key:
+        cookie_value = ""
+        if args.http_client is not None:
+            cookie_value = json.dumps(dict(args.http_client.cookies.items()))
+        keyring.set_password(args.cookie_key, args.username, cookie_value)
+    elif args.cookie_jar is not None:
+        args.cookie_jar.save(ignore_discard=True, ignore_expires=True)
 
 if __name__ == "__main__":
     main()
