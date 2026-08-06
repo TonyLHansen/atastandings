@@ -155,6 +155,11 @@ You can then use the command
 (Replace `PASSWORD-KEY` with the value used for the `--password-key` option, and
 replace `USERNAME` with the value used for the `--username` option.)
 
+Note: the `keyring` library and program uses native OS facilities for its operations,
+such as the Uses the *Windows Credential Locker* (aka *Credential Vault*)
+or the *macOS Keychain* service.
+See the `keyring` documentation for more details.
+
 ## Web Cache
 By default, `atastandings` maintains a cache of the web sites, so that you can have faster response times
 when you run the program multiple times.
