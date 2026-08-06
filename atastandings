@@ -1579,6 +1579,14 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |Cannot be used with `--cookie-file`.
     |`--username` is required when using `--password-key` or `--cookie-key`.
     |
+    |To install keyring support, install the keyring python library using `pip3 install keyring`.
+    |(See Installation below for more information.)
+    |In addition to the python library, it will also add a command called `keyring` to your path.
+    |You can then use the command
+    |`keyring set PASSWORD-KEY USERNAME` and it will prompt for the password to store.
+    |(Replace `PASSWORD-KEY` with the value used for the `--password-key` option, and
+    |replace `USERNAME` with the value used for the `--username` option.)
+    |
     |## Web Cache
     |By default, `atastandings` maintains a cache of the web sites, so that you can have faster response times
     |when you run the program multiple times.
@@ -1700,7 +1708,7 @@ def print_readme_trailer():
     |```
     |
     |Depending on your installation, you may also need to install
-    |the `pyyaml` library.
+    |the `pyyaml` library and the `keyring` library.
     |
     |Put the atastandings script somewhere in your path, make sure it is executable
     |(in Linux and WSL, `chmod a+x atastandings`) and run it with the options you desire.
