@@ -1562,7 +1562,7 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |This can be set with --request-interval, which defaults to 1 second.
     |
     |## User Management
-    |If standings access requires login, you can provide credentials and optional cookie persistence.
+    |Standings access now requires a login and you can provide credentials and optional cookie persistence.
     |
     |* `--username USERNAME` -- ATA login username/email.
     |Defaults to the `ATASTANDINGS_USERNAME` environment variable if set.
