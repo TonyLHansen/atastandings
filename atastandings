@@ -261,8 +261,8 @@ def get_http_client(args):
     # pylint: disable=global-statement
     global HTTP_CLIENT
     global COOKIE_JAR
-    if COOKIE_JAR is None and args.cookies is not None:
-        COOKIE_JAR = MozillaCookieJar(args.cookies)
+    if COOKIE_JAR is None and args.cookie_file is not None:
+        COOKIE_JAR = MozillaCookieJar(args.cookie_file)
         try:
             COOKIE_JAR.load(ignore_discard=True, ignore_expires=True)
         except FileNotFoundError:
@@ -1385,6 +1385,16 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |To combat too many network failures, it is possible to set a pause after each successful network connection.
     |This can be set with --request-interval, which defaults to 1 second.
     |
+    |## User Management
+    |If standings access requires login, you can provide credentials and optional cookie persistence.
+    |
+    |* `--username USERNAME` -- ATA login username/email.
+    |Defaults to the `ATASTANDINGS_USERNAME` environment variable if set.
+    |* `--password PASSWORD` -- ATA login password.
+    |Defaults to the `ATASTANDINGS_PASSWORD` environment variable if set.
+    |* `--cookie-file PATH` -- Cookie jar file used to load/save session cookies.
+    |Defaults to the `COOKIE_FILE` environment variable if set.
+    |
     |## Web Cache
     |By default, `atastandings` maintains a cache of the web sites, so that you can have faster response times
     |when you run the program multiple times.
@@ -1764,23 +1774,28 @@ def parse_options(conf):
         action="store_true",
         default=dflt,
     )
+
+    ################
+    # user management options
+    ################
+    grp_user = parser.add_argument_group("User Management")
     dflt = conf.get("username", os.getenv("ATASTANDINGS_USERNAME"))
-    grp_conn.add_argument(
+    grp_user.add_argument(
         "--username",
         help="ATA login username/email (default: ATASTANDINGS_USERNAME env var if set).",
         type=str,
         default=dflt,
     )
     dflt = conf.get("password", os.getenv("ATASTANDINGS_PASSWORD"))
-    grp_conn.add_argument(
+    grp_user.add_argument(
         "--password",
         help="ATA login password (default: ATASTANDINGS_PASSWORD env var if set).",
         type=str,
         default=dflt,
     )
-    dflt = conf.get("cookies", os.getenv("COOKIE_FILE"))
-    grp_conn.add_argument(
-        "--cookies",
+    dflt = conf.get("cookie-file", os.getenv("COOKIE_FILE"))
+    grp_user.add_argument(
+        "--cookie-file",
         help="HTTP Cookie File (default: COOKIE_FILE env var if set).",
         type=str,
         default=dflt,
