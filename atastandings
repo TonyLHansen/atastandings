@@ -2000,6 +2000,7 @@ def parse_options(conf):
     dflt = conf.get("cookie-file", os.getenv("COOKIE_FILE"))
     grp_user.add_argument(
         "--cookie-file",
+        "--cookies",
         help="HTTP Cookie File (default: COOKIE_FILE env var if set).",
         type=str,
         default=dflt,
