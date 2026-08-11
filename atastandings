@@ -257,6 +257,55 @@ def get_cache_name(url):
     return "".join(ret)
 
 
+def standings_date_to_cache_dir(standings_date):
+    """Convert mm/dd/yyyy standings-date text to yyyy-mm-dd cache-dir text."""
+    if not standings_date:
+        return ""
+
+    # This is intentionally a shape-only parse. If upstream emits an impossible
+    # calendar date (for example 13/40/2026), we currently preserve it as a
+    # directory token rather than rejecting it.
+    m = re.match(r"^\s*([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})\s*$", standings_date)
+    if not m:
+        return ""
+
+    month, day, year = m.groups()
+    return f"{year}-{int(month):02d}-{int(day):02d}"
+
+
+def get_effective_cache_directory(args):
+    """Return cache directory including optional yyyy-mm-dd suffix."""
+    if args.add_date_to_cache_directory and args.current_standings_date_dir:
+        return os.path.join(args.cache_directory, args.current_standings_date_dir)
+    return args.cache_directory
+
+
+def get_cache_name_base(args, url):
+    """Return full cache-file basename for a URL in the effective cache directory."""
+    urlname = get_cache_name(url)
+    return f"{get_effective_cache_directory(args)}/{CACHE_URL_PREFIX}{urlname}"
+
+
+def initialize_current_standings_date_dir(args):
+    """Initialize current standings date directory from existing yyyy-mm-dd subdirectories."""
+    args.current_standings_date_dir = ""
+    if not args.add_date_to_cache_directory:
+        return
+
+    g = f"{args.cache_directory}/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+    date_dir = ""
+    for dirname in glob.glob(g):
+        if os.path.isdir(dirname):
+            bn = os.path.basename(dirname)
+            date_dir = max(date_dir, bn)
+
+    if date_dir:
+        args.current_standings_date_dir = date_dir
+        verbose(args, f"cache-date-dir: initialized to {args.current_standings_date_dir}")
+    else:
+        verbose(args, "cache-date-dir: no yyyy-mm-dd directories found; using base cache directory")
+
+
 def get_http_client(args):
     """Return a shared HTTP client with cookie/session state."""
     if args.http_client is None:
@@ -680,8 +729,7 @@ def get_url(args, url, url_type):
     Exit with an error message if there is an error retrieving it.
     Return the body as an array of lines.
     """
-    urlname = get_cache_name(url)
-    cachename_base = f"{args.cache_directory}/{CACHE_URL_PREFIX}{urlname}"
+    cachename_base = get_cache_name_base(args, url)
 
     if not args.ignore_existing_cache:
         textlines, cret = get_cache(args, cachename_base, url_type)
@@ -729,13 +777,29 @@ def get_url(args, url, url_type):
     if args.request_interval:
         time.sleep(args.request_interval)
     web_standings_date = get_standings_date(r.text)
+    web_standings_date_dir = standings_date_to_cache_dir(web_standings_date)
+
+    if (
+        args.add_date_to_cache_directory
+        and web_standings_date_dir
+        and web_standings_date_dir != args.current_standings_date_dir
+        and (not args.current_standings_date_dir or web_standings_date_dir > args.current_standings_date_dir)
+    ):
+        verbose(
+            args,
+            f"cache-date-dir: updating from '{args.current_standings_date_dir}' to '{web_standings_date_dir}'",
+        )
+        args.current_standings_date_dir = web_standings_date_dir
+
     if url_type not in STANDINGS_DATE:
         STANDINGS_DATE[url_type] = web_standings_date
 
     extra_verbose(args, 2, f"page={r.text}")
     if not args.do_not_write_cache:
+        cachename_base = get_cache_name_base(args, url)
         suffix = ".bz2" if args.bzip2_cache else ".gz" if args.gzip_cache else ""
         verbose(args, f"writing to {cachename_base}{suffix}")
+        os.makedirs(os.path.dirname(cachename_base), exist_ok=True)
         with open_cache_write(args, f"{cachename_base}{suffix}.tmp", "wt") as fp:
             fp.write(r.text)
         os.rename(f"{cachename_base}{suffix}.tmp", f"{cachename_base}{suffix}")
@@ -745,10 +809,26 @@ def get_url(args, url, url_type):
 
 
 def clean_cache(args):
-    """Clear out all files in the cache directory named "atastandings." followed by anything."""
+    """Remove cache files in the base cache directory and yyyy-mm-dd subdirectories."""
     for fname in glob.glob(f"{args.cache_directory}/atastandings.*"):
         verbose(args, f"Cleaning {fname}")
         os.unlink(fname)
+
+    g = f"{args.cache_directory}/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+    for dirname in glob.glob(g):
+        if not os.path.isdir(dirname):
+            continue
+
+        for fname in glob.glob(f"{dirname}/atastandings.*"):
+            verbose(args, f"Cleaning {fname}")
+            os.unlink(fname)
+
+        # Best effort only: remove date directory when it is empty.
+        try:
+            os.rmdir(dirname)
+            verbose(args, f"Removed empty cache date directory {dirname}")
+        except OSError:
+            pass
 
 
 def trim_border(lines, border):
@@ -2137,6 +2217,7 @@ def parse_options(conf):
     args = parser.parse_args()
     args.http_client = None
     args.cookie_jar = None
+    args.current_standings_date_dir = ""
 
     return (parser, args)
 
@@ -2234,7 +2315,7 @@ def update_cache_worldstate(args, base, standing_type):
     args.ignore_existing_cache = False
     args.offline = False
 
-    g = f"{args.cache_directory}/atastandings.{base}*"
+    g = f"{get_effective_cache_directory(args)}/atastandings.{base}*"
     found_updated = False
 
     for fname in glob.glob(g):
@@ -2292,6 +2373,8 @@ def check_options(parser, args):
     """Validate the options"""
     # check the data
     check_global_arrays()
+
+    initialize_current_standings_date_dir(args)
 
     if args.internal_checks:
         print("Internal checks complete")
