@@ -223,4 +223,4 @@ run-black:
 	black -l 120 atastandings
 
 run-pylint:
-	pylint3 atastandings
+	pylint --rc .pylintrc atastandings
