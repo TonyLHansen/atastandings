@@ -1722,6 +1722,8 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |
     |* `--cache-directory PATH`, `-C PATH` -- This will set the cache directory to the given path.
     |It defaults to an os-specific temp directory.
+    |* `--add-date-to-cache-directory` -- Store cache files under a `YYYY-mm-dd` subdirectory of the cache directory.
+    |The subdirectory is derived from the page's "Standings updated on mm/dd/yyyy" date.
     |* `--clean-cache` -- Sometimes you might wish to clean up all of the cached files.
     |All cache files are named `atastandings.` followed by a long string of characters representing the web file being referenced.
     |* `--ignore-existing-cache`, `-I` -- Sometimes you might want the existing cache to be ignored, but still created.
