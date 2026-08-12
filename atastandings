@@ -32,6 +32,7 @@ STATE_SUFFIX = "state-standings"
 STATEBASE = f"{ATABASE}{STATE_SUFFIX}/"
 ZIP_SUFFIXES = [".bz2", ".gz", ""]
 CACHE_URL_PREFIX = "atastandings."
+CACHE_DATE_DIRECTORY_FORMAT_CHOICES = ["", "yyyy-mm-dd", "yy-mm-dd"]
 
 NAME_SUFFIXES = ["jr.", "sr.", "i", "ii", "iii", "iv"]
 NAME_PREFIXES = ["van", "san", "de", "da", "los", "st.", "saint"]
@@ -257,8 +258,22 @@ def get_cache_name(url):
     return "".join(ret)
 
 
-def standings_date_to_cache_dir(standings_date):
-    """Convert mm/dd/yyyy standings-date text to yyyy-mm-dd cache-dir text."""
+def get_cache_date_directory_glob(date_format):
+    """Return a date-directory glob fragment for the selected format."""
+    if not date_format:
+        return ""
+    if date_format == "yy-mm-dd":
+        return "[0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+    if date_format == "yyyy-mm-dd":
+        return "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+    return ""
+
+
+def standings_date_to_cache_dir(args, standings_date):
+    """Convert mm/dd/yyyy standings-date text to configured cache-dir date format."""
+    if not args.add_date_to_cache_directory:
+        return ""
+
     if not standings_date:
         return ""
 
@@ -270,11 +285,13 @@ def standings_date_to_cache_dir(standings_date):
         return ""
 
     month, day, year = m.groups()
+    if args.add_date_to_cache_directory == "yy-mm-dd":
+        year = year[-2:]
     return f"{year}-{int(month):02d}-{int(day):02d}"
 
 
 def get_effective_cache_directory(args):
-    """Return cache directory including optional yyyy-mm-dd suffix."""
+    """Return cache directory including an optional date suffix."""
     if args.add_date_to_cache_directory and args.current_standings_date_dir:
         return os.path.join(args.cache_directory, args.current_standings_date_dir)
     return args.cache_directory
@@ -287,12 +304,13 @@ def get_cache_name_base(args, url):
 
 
 def initialize_current_standings_date_dir(args):
-    """Initialize current standings date directory from existing yyyy-mm-dd subdirectories."""
+    """Initialize current standings date directory from existing date-format subdirectories."""
     args.current_standings_date_dir = ""
     if not args.add_date_to_cache_directory:
         return
 
-    g = f"{args.cache_directory}/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+    date_glob = get_cache_date_directory_glob(args.add_date_to_cache_directory)
+    g = f"{args.cache_directory}/{date_glob}"
     date_dir = ""
     for dirname in glob.glob(g):
         if os.path.isdir(dirname):
@@ -303,7 +321,10 @@ def initialize_current_standings_date_dir(args):
         args.current_standings_date_dir = date_dir
         verbose(args, f"cache-date-dir: initialized to {args.current_standings_date_dir}")
     else:
-        verbose(args, "cache-date-dir: no yyyy-mm-dd directories found; using base cache directory")
+        verbose(
+            args,
+            f"cache-date-dir: no {args.add_date_to_cache_directory} directories found; using base cache directory",
+        )
 
 
 def get_http_client(args):
@@ -784,7 +805,7 @@ def get_url(args, url, url_type):
     if args.request_interval:
         time.sleep(args.request_interval)
     web_standings_date = get_standings_date(r.text)
-    web_standings_date_dir = standings_date_to_cache_dir(web_standings_date)
+    web_standings_date_dir = standings_date_to_cache_dir(args, web_standings_date)
 
     if (
         args.add_date_to_cache_directory
@@ -836,12 +857,16 @@ def get_url(args, url, url_type):
 
 
 def clean_cache(args):
-    """Remove cache files in the base cache directory and yyyy-mm-dd subdirectories."""
+    """Remove cache files in the base cache directory and configured date subdirectories."""
     for fname in glob.glob(f"{args.cache_directory}/atastandings.*"):
         verbose(args, f"Cleaning {fname}")
         os.unlink(fname)
 
-    g = f"{args.cache_directory}/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+    date_glob = get_cache_date_directory_glob(args.add_date_to_cache_directory)
+    if not date_glob:
+        return
+
+    g = f"{args.cache_directory}/{date_glob}"
     for dirname in glob.glob(g):
         if not os.path.isdir(dirname):
             continue
@@ -1722,8 +1747,8 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |
     |* `--cache-directory PATH`, `-C PATH` -- This will set the cache directory to the given path.
     |It defaults to an os-specific temp directory.
-    |* `--add-date-to-cache-directory` -- Store cache files under a `YYYY-mm-dd` subdirectory of the cache directory.
-    |The subdirectory is derived from the page's "Standings updated on mm/dd/yyyy" date.
+    |* `--add-date-to-cache-directory FORMAT` -- Date subdirectory format for cache files.
+    |Use `yyyy-mm-dd` or `yy-mm-dd` to enable date subdirectories, or leave it empty (`""`) to disable.
     |* `--clean-cache` -- Sometimes you might wish to clean up all of the cached files.
     |All cache files are named `atastandings.` followed by a long string of characters representing the web file being referenced.
     |* `--ignore-existing-cache`, `-I` -- Sometimes you might want the existing cache to be ignored, but still created.
@@ -1771,6 +1796,7 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |    omit: ""
     |    minimize: ""
     |    cache-directory: ""
+    |    add-date-to-cache-directory: ""
     |    dots: false
     |    gzip-cache: false
     |    bzip2-cache: false
@@ -2139,11 +2165,15 @@ def parse_options(conf):
         type=str,
         default=dflt,
     )
-    dflt = conf.get("add-date-to-cache-directory", False)
+    dflt = conf.get("add-date-to-cache-directory", "")
     grp_cache.add_argument(
         "--add-date-to-cache-directory",
-        help=f"Add the page's date to the cache directory path (default: {dflt}).",
-        action="store_true",
+        help=(
+            "Date subdirectory format for cache files: '' (disabled), yyyy-mm-dd, or yy-mm-dd "
+            f"(default: {dflt!r})."
+        ),
+        type=str,
+        choices=CACHE_DATE_DIRECTORY_FORMAT_CHOICES,
         default=dflt,
     )
     grp_cache_inc = grp_cache.add_mutually_exclusive_group()
@@ -2403,6 +2433,13 @@ def check_options(parser, args):
     """Validate the options"""
     # check the data
     check_global_arrays()
+
+    # Validate cache directory date format from command line/config/environment.
+    if args.add_date_to_cache_directory not in CACHE_DATE_DIRECTORY_FORMAT_CHOICES:
+        usage(
+            parser,
+            "--add-date-to-cache-directory must be one of '', 'yyyy-mm-dd', or 'yy-mm-dd'",
+        )
 
     initialize_current_standings_date_dir(args)
 
