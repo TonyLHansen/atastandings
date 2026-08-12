@@ -2166,6 +2166,13 @@ def parse_options(conf):
         default=dflt,
     )
     dflt = conf.get("add-date-to-cache-directory", "")
+    if dflt is None:
+        dflt = ""
+    if not isinstance(dflt, str) or dflt not in CACHE_DATE_DIRECTORY_FORMAT_CHOICES:
+        parser.error(
+            "Invalid configuration value for 'add-date-to-cache-directory': "
+            f"{dflt!r}. Expected one of '', 'yyyy-mm-dd', or 'yy-mm-dd'."
+        )
     grp_cache.add_argument(
         "--add-date-to-cache-directory",
         help=(
@@ -2433,13 +2440,6 @@ def check_options(parser, args):
     """Validate the options"""
     # check the data
     check_global_arrays()
-
-    # Validate cache directory date format from command line/config/environment.
-    if args.add_date_to_cache_directory not in CACHE_DATE_DIRECTORY_FORMAT_CHOICES:
-        usage(
-            parser,
-            "--add-date-to-cache-directory must be one of '', 'yyyy-mm-dd', or 'yy-mm-dd'",
-        )
 
     initialize_current_standings_date_dir(args)
 
