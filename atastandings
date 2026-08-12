@@ -654,6 +654,13 @@ def expire_old_cache_file(args, cachename):
         verbose(args, f"{cachename} is too old -- removed")
 
 
+def read_cache_text(cachename_base):
+    """Read and return cache text for a base cache name, regardless of compression suffix."""
+    cachename, _ = cache_stat(cachename_base)
+    with open_cache_read(cachename) as fp:
+        return fp.read()
+
+
 def get_cache(args, cachename_base, url_type):
     """
     Retrieve a URL from the cache.
@@ -795,17 +802,37 @@ def get_url(args, url, url_type):
         STANDINGS_DATE[url_type] = web_standings_date
 
     extra_verbose(args, 2, f"page={r.text}")
+    updated = True
     if not args.do_not_write_cache:
         cachename_base = get_cache_name_base(args, url)
         suffix = ".bz2" if args.bzip2_cache else ".gz" if args.gzip_cache else ""
-        verbose(args, f"writing to {cachename_base}{suffix}")
-        os.makedirs(os.path.dirname(cachename_base), exist_ok=True)
-        with open_cache_write(args, f"{cachename_base}{suffix}.tmp", "wt") as fp:
-            fp.write(r.text)
-        os.rename(f"{cachename_base}{suffix}.tmp", f"{cachename_base}{suffix}")
+        skip_write = False
+        skip_reason = None
+
+        try:
+            cache_text = read_cache_text(cachename_base)
+            cache_standings_date = get_standings_date(cache_text)
+            if cache_text == r.text:
+                skip_write = True
+                skip_reason = "content unchanged"
+            elif web_standings_date and cache_standings_date == web_standings_date:
+                skip_write = True
+                skip_reason = f"standings date unchanged ({web_standings_date})"
+        except FileNotFoundError:
+            pass
+
+        if skip_write:
+            updated = False
+            verbose(args, f"cache not rewritten for {cachename_base}{suffix}: {skip_reason}")
+        else:
+            verbose(args, f"writing to {cachename_base}{suffix}")
+            os.makedirs(os.path.dirname(cachename_base), exist_ok=True)
+            with open_cache_write(args, f"{cachename_base}{suffix}.tmp", "wt") as fp:
+                fp.write(r.text)
+            os.rename(f"{cachename_base}{suffix}.tmp", f"{cachename_base}{suffix}")
     text = r.text
 
-    return (text.splitlines(), True)
+    return (text.splitlines(), updated)
 
 
 def clean_cache(args):
@@ -2115,6 +2142,7 @@ def parse_options(conf):
         "--add-date-to-cache-directory",
         help=f"Add the page's date to the cache directory path (default: {dflt}).",
         action="store_true",
+        default=dflt,
     )
     grp_cache_inc = grp_cache.add_mutually_exclusive_group()
     grp_cache_inc.add_argument(
