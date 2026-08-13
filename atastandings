@@ -290,6 +290,48 @@ def standings_date_to_cache_dir(args, standings_date):
     return f"{year}-{int(month):02d}-{int(day):02d}"
 
 
+def parse_date_override_value(date_format, date_value):
+    """Parse/normalize --date according to --add-date-to-cache-directory format."""
+    if date_value is None:
+        return None
+
+    val = str(date_value).strip()
+
+    if date_format == "yyyy-mm-dd":
+        patterns = [
+            r"^([0-9]{4})-([0-9]{2})-([0-9]{2})$",
+            r"^([0-9]{4})/([0-9]{2})/([0-9]{2})$",
+            r"^([0-9]{4})([0-9]{2})([0-9]{2})$",
+        ]
+    elif date_format == "yy-mm-dd":
+        patterns = [
+            r"^([0-9]{2})-([0-9]{2})-([0-9]{2})$",
+            r"^([0-9]{2})/([0-9]{2})/([0-9]{2})$",
+            r"^([0-9]{2})([0-9]{2})([0-9]{2})$",
+        ]
+    else:
+        return None
+
+    for pattern in patterns:
+        m = re.match(pattern, val)
+        if m:
+            yr, mth, day = m.groups()
+            return f"{yr}-{mth}-{day}"
+
+    return None
+
+
+def should_update_cache_date_dir(args, web_standings_date_dir):
+    """Return True if fetched standings date should move current cache date directory."""
+    if not args.add_date_to_cache_directory or args.date:
+        return False
+    if not web_standings_date_dir:
+        return False
+    if web_standings_date_dir == args.current_standings_date_dir:
+        return False
+    return not args.current_standings_date_dir or web_standings_date_dir > args.current_standings_date_dir
+
+
 def get_effective_cache_directory(args):
     """Return cache directory including an optional date suffix."""
     if args.add_date_to_cache_directory and args.current_standings_date_dir:
@@ -307,6 +349,11 @@ def initialize_current_standings_date_dir(args):
     """Initialize current standings date directory from existing date-format subdirectories."""
     args.current_standings_date_dir = ""
     if not args.add_date_to_cache_directory:
+        return
+
+    if args.date:
+        args.current_standings_date_dir = args.date
+        verbose(args, f"cache-date-dir: using --date override {args.current_standings_date_dir}")
         return
 
     date_glob = get_cache_date_directory_glob(args.add_date_to_cache_directory)
@@ -335,6 +382,119 @@ def get_http_client(args):
             cookies=args.cookie_jar,
         )
     return args.http_client
+
+
+def add_cache_control_options(parser, conf):
+    """Add cache-related argparse options and return the cache argument group."""
+    grp_cache = parser.add_argument_group("Cache Control Options")
+    dflt = conf.get("cache-directory", get_cache_dir())
+    grp_cache.add_argument(
+        "-C",
+        "--cache-directory",
+        help=f"Keep a cache of the web pages in this directory (default: {dflt}).",
+        type=str,
+        default=dflt,
+    )
+
+    dflt = conf.get("add-date-to-cache-directory", "")
+    if dflt is None:
+        dflt = ""
+    if not isinstance(dflt, str) or dflt not in CACHE_DATE_DIRECTORY_FORMAT_CHOICES:
+        parser.error(
+            "Invalid configuration value for 'add-date-to-cache-directory': "
+            f"{dflt!r}. Expected one of '', 'yyyy-mm-dd', or 'yy-mm-dd'."
+        )
+    grp_cache.add_argument(
+        "--add-date-to-cache-directory",
+        help=(
+            "Date subdirectory format for cache files: '' (disabled), yyyy-mm-dd, or yy-mm-dd " f"(default: {dflt!r})."
+        ),
+        type=str,
+        choices=CACHE_DATE_DIRECTORY_FORMAT_CHOICES,
+        default=dflt,
+    )
+
+    dflt = conf.get("year")
+    grp_cache.add_argument(
+        "--date",
+        help=(
+            "Date directory override for offline cache reads. "
+            "Allowed forms depend on --add-date-to-cache-directory: "
+            "yyyy-mm-dd accepts YYYY-MM-DD, YYYY/MM/DD, YYYYMMDD; "
+            "yy-mm-dd accepts YY-MM-DD, YY/MM/DD, YYMMDD."
+        ),
+        type=str,
+        default=dflt,
+    )
+
+    grp_cache_inc = grp_cache.add_mutually_exclusive_group()
+    grp_cache_inc.add_argument(
+        "-I",
+        "--ignore-existing-cache",
+        help="Ignore any existing cache of the web pages. (Still create one though.)",
+        action="store_true",
+    )
+    dflt = conf.get("offline", False)
+    grp_cache_inc.add_argument(
+        "--offline",
+        "--no-offline",
+        help=f"Run offline using the cache. (Implies -T/--ignore-cache-times) (default: {dflt})",
+        action=BooleanAction,
+        default=dflt,
+    )
+
+    grp_cache_time = grp_cache.add_mutually_exclusive_group()
+    dflt = conf.get("ignore-cache", False)
+    grp_cache_time.add_argument(
+        "-T",
+        "--ignore-cache",
+        "--ignore-cache-times",
+        help=f"Do not timeout any existing cache of the web pages (default: {dflt}).",
+        action="store_true",
+        default=dflt,
+    )
+    dflt = conf.get("use-web-standings-dates", False)
+    grp_cache_time.add_argument(
+        "-w",
+        "--use-web-standings-dates",
+        help=f"Verify 'standings updated' date in the file against the web page (default: {dflt}).",
+        action="store_true",
+        default=dflt,
+    )
+    dflt = conf.get("use-time-based-cache", False)
+    grp_cache_time.add_argument(
+        "--use-time-based-cache",
+        help=f"Use a time-based 24-hour cache (default: {dflt}).",
+        action="store_true",
+        default=dflt,
+    )
+
+    grp_cache.add_argument(
+        "-D", "--do-not-write-cache", help="Do not write a cache of the web pages.", action="store_true"
+    )
+    grp_cache.add_argument(
+        "--clean-cache", help="Remove all of the files in the current cache of the web pages.", action="store_true"
+    )
+
+    grp_cache_zip = grp_cache.add_mutually_exclusive_group()
+    dflt = conf.get("gzip-cache", False)
+    grp_cache_zip.add_argument(
+        "--gzip-cache",
+        "--no-gzip-cache",
+        help=f"Save cache files using gzip (default: {dflt})",
+        action=BooleanAction,
+        default=dflt,
+    )
+    dflt = conf.get("bzip2-cache", False)
+    grp_cache_zip.add_argument(
+        "--bzip2-cache",
+        "--no-bzip2-cache",
+        help=f"Save cache files using bzip2 (default: {dflt})",
+        action=BooleanAction,
+        default=dflt,
+    )
+
+    return grp_cache
 
 
 def cookiejar_from_mapping(mapping):
@@ -807,12 +967,7 @@ def get_url(args, url, url_type):
     web_standings_date = get_standings_date(r.text)
     web_standings_date_dir = standings_date_to_cache_dir(args, web_standings_date)
 
-    if (
-        args.add_date_to_cache_directory
-        and web_standings_date_dir
-        and web_standings_date_dir != args.current_standings_date_dir
-        and (not args.current_standings_date_dir or web_standings_date_dir > args.current_standings_date_dir)
-    ):
+    if should_update_cache_date_dir(args, web_standings_date_dir):
         verbose(
             args,
             f"cache-date-dir: updating from '{args.current_standings_date_dir}' to '{web_standings_date_dir}'",
@@ -1749,6 +1904,10 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |It defaults to an os-specific temp directory.
     |* `--add-date-to-cache-directory FORMAT` -- Date subdirectory format for cache files.
     |Use `yyyy-mm-dd` or `yy-mm-dd` to enable date subdirectories, or leave it empty (`""`) to disable.
+    |* `--date DATE` -- Offline date-directory override when `--add-date-to-cache-directory` is enabled.
+    |May only be used with `--offline`.
+    |For `yyyy-mm-dd`, use one of `YYYY-MM-DD`, `YYYY/MM/DD`, or `YYYYMMDD`.
+    |For `yy-mm-dd`, use one of `YY-MM-DD`, `YY/MM/DD`, or `YYMMDD`.
     |* `--clean-cache` -- Sometimes you might wish to clean up all of the cached files.
     |All cache files are named `atastandings.` followed by a long string of characters representing the web file being referenced.
     |* `--ignore-existing-cache`, `-I` -- Sometimes you might want the existing cache to be ignored, but still created.
@@ -1797,6 +1956,7 @@ def print_readme_heading(args_actions, print_example_preamble=True):
     |    minimize: ""
     |    cache-directory: ""
     |    add-date-to-cache-directory: ""
+    |    year: ""
     |    dots: false
     |    gzip-cache: false
     |    bzip2-cache: false
@@ -2156,97 +2316,7 @@ def parse_options(conf):
     ################
     # cache control options
     ################
-    grp_cache = parser.add_argument_group("Cache Control Options")
-    dflt = conf.get("cache-directory", get_cache_dir())
-    grp_cache.add_argument(
-        "-C",
-        "--cache-directory",
-        help=f"Keep a cache of the web pages in this directory (default: {dflt}).",
-        type=str,
-        default=dflt,
-    )
-    dflt = conf.get("add-date-to-cache-directory", "")
-    if dflt is None:
-        dflt = ""
-    if not isinstance(dflt, str) or dflt not in CACHE_DATE_DIRECTORY_FORMAT_CHOICES:
-        parser.error(
-            "Invalid configuration value for 'add-date-to-cache-directory': "
-            f"{dflt!r}. Expected one of '', 'yyyy-mm-dd', or 'yy-mm-dd'."
-        )
-    grp_cache.add_argument(
-        "--add-date-to-cache-directory",
-        help=(
-            "Date subdirectory format for cache files: '' (disabled), yyyy-mm-dd, or yy-mm-dd "
-            f"(default: {dflt!r})."
-        ),
-        type=str,
-        choices=CACHE_DATE_DIRECTORY_FORMAT_CHOICES,
-        default=dflt,
-    )
-    grp_cache_inc = grp_cache.add_mutually_exclusive_group()
-    grp_cache_inc.add_argument(
-        "-I",
-        "--ignore-existing-cache",
-        help="Ignore any existing cache of the web pages. (Still create one though.)",
-        action="store_true",
-    )
-    dflt = conf.get("offline", False)
-    grp_cache_inc.add_argument(
-        "--offline",
-        "--no-offline",
-        help=f"Run offline using the cache. (Implies -T/--ignore-cache-times) (default: {dflt})",
-        action=BooleanAction,
-        default=dflt,
-    )
-    grp_cache_time = grp_cache.add_mutually_exclusive_group()
-    dflt = conf.get("ignore-cache", False)
-    grp_cache_time.add_argument(
-        "-T",
-        "--ignore-cache",
-        "--ignore-cache-times",
-        help=f"Do not timeout any existing cache of the web pages (default: {dflt}).",
-        action="store_true",
-        default=dflt,
-    )
-    dflt = conf.get("use-web-standings-dates", False)
-    grp_cache_time.add_argument(
-        "-w",
-        "--use-web-standings-dates",
-        help=f"Verify 'standings updated' date in the file against the web page (default: {dflt}).",
-        action="store_true",
-        default=dflt,
-    )
-    dflt = conf.get("use-time-based-cache", False)
-    grp_cache_time.add_argument(
-        "--use-time-based-cache",
-        help=f"Use a time-based 24-hour cache (default: {dflt}).",
-        action="store_true",
-        default=dflt,
-    )
-    grp_cache.add_argument(
-        "-D", "--do-not-write-cache", help="Do not write a cache of the web pages.", action="store_true"
-    )
-    grp_cache.add_argument(
-        "--clean-cache", help="Remove all of the files in the current cache of the web pages.", action="store_true"
-    )
-
-    grp_cache_zip = grp_cache.add_mutually_exclusive_group()
-    dflt = conf.get("gzip-cache", False)
-    grp_cache_zip.add_argument(
-        "--gzip-cache",
-        "--no-gzip-cache",
-        help=f"Save cache files using gzip (default: {dflt})",
-        action=BooleanAction,
-        default=dflt,
-    )
-    dflt = conf.get("bzip2-cache", False)
-    grp_cache_zip.add_argument(
-        "--bzip2-cache",
-        "--no-bzip2-cache",
-        help=f"Save cache files using bzip2 (default: {dflt})",
-        action=BooleanAction,
-        default=dflt,
-    )
+    add_cache_control_options(parser, conf)
 
     ################
     # other options
@@ -2440,6 +2510,32 @@ def check_options(parser, args):
     """Validate the options"""
     # check the data
     check_global_arrays()
+
+    # --date may only be used with --offline and --add-date-to-cache-directory.
+    if args.date:
+        if not args.offline:
+            usage(parser, "--date may only be used with --offline")
+        if not args.add_date_to_cache_directory:
+            usage(parser, "--date requires --add-date-to-cache-directory")
+
+        date_norm = parse_date_override_value(args.add_date_to_cache_directory, args.date)
+        if date_norm is None:
+            if args.add_date_to_cache_directory == "yyyy-mm-dd":
+                usage(
+                    parser,
+                    "--date must match yyyy-mm-dd as YYYY-MM-DD, YYYY/MM/DD, or YYYYMMDD",
+                )
+            else:
+                usage(
+                    parser,
+                    "--date must match yy-mm-dd as YY-MM-DD, YY/MM/DD, or YYMMDD",
+                )
+        args.date = date_norm
+
+        # --date selects an existing offline cache date directory; it must already exist.
+        date_dir = os.path.join(args.cache_directory, args.date)
+        if not os.path.isdir(date_dir):
+            usage(parser, f"--date cache directory does not exist: {date_dir}")
 
     initialize_current_standings_date_dir(args)
 
