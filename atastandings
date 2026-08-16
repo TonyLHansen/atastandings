@@ -174,6 +174,35 @@ def strip_html(l):
     return l
 
 
+def find_case_insensitive_cached_name(cachename):
+    """Find a cache file by case-insensitive basename match and return full path."""
+    dirname = os.path.dirname(cachename) or "."
+    base = os.path.basename(cachename)
+    expected = {(base + suffix).lower() for suffix in ZIP_SUFFIXES}
+
+    try:
+        entries = os.listdir(dirname)
+    except FileNotFoundError:
+        return None
+
+    matches = [os.path.join(dirname, entry) for entry in entries if entry.lower() in expected]
+    if not matches:
+        return None
+
+    if len(matches) > 1:
+        newest = max(matches, key=lambda nm: (os.path.getmtime(nm), nm))
+        print(
+            "Warning: multiple case-insensitive cache matches for "
+            f"{cachename}.\n\tusing newest file {newest}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return newest
+
+    # Prefer deterministic ordering when multiple names differ only by case.
+    return sorted(matches)[0]
+
+
 def cache_stat(cachename):
     """Search the cachename for .gz, .bz2, "" versions. Return cachename with suffix plus stat info."""
     for suffix in ZIP_SUFFIXES:
@@ -183,6 +212,15 @@ def cache_stat(cachename):
             return (cachename + suffix, st)
         except FileNotFoundError:
             pass
+
+    altname = find_case_insensitive_cached_name(cachename)
+    if altname is not None:
+        try:
+            st = os.stat(altname)
+            return (altname, st)
+        except FileNotFoundError:
+            pass
+
     return (cachename, None)
 
 
