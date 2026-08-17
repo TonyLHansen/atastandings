@@ -158,13 +158,19 @@ def get_random_name(args, nm):
     return " ".join(newname)
 
 
-def get_cache_dir():
+def get_cache_dir(averbose):
     """Determine the directory where to store a cache of the web files"""
     for name in ["TEMP", "TMP", "TMPDIR", "TEMPDIR"]:
         dirname = os.environ.get(name)
         if dirname and os.path.isdir(dirname):
+            if averbose:
+                print(f"choosing default cache from env: name={name} dirname={dirname}", file=sys.stderr)
             return dirname
-    return "/tmp"
+
+    dirname = "/tmp"
+    if averbose:
+        print(f"choosing default cache dirname={dirname}", file=sys.stderr)
+    return dirname
 
 
 def strip_html(l):
@@ -193,7 +199,8 @@ def find_case_insensitive_cached_name(cachename):
         newest = max(matches, key=lambda nm: (os.path.getmtime(nm), nm))
         print(
             "Warning: multiple case-insensitive cache matches for "
-            f"{cachename}.\n\tusing newest file {newest}",
+            f"{cachename}.\n\tusing newest file {newest}.\n"
+            "If there are duplicates, removing those will silence this message.",
             file=sys.stderr,
             flush=True,
         )
@@ -422,10 +429,10 @@ def get_http_client(args):
     return args.http_client
 
 
-def add_cache_control_options(parser, conf):
+def add_cache_control_options(parser, averbose, conf):
     """Add cache-related argparse options and return the cache argument group."""
     grp_cache = parser.add_argument_group("Cache Control Options")
-    dflt = conf.get("cache-directory", get_cache_dir())
+    dflt = conf.get("cache-directory", get_cache_dir(averbose))
     grp_cache.add_argument(
         "-C",
         "--cache-directory",
@@ -896,7 +903,7 @@ def get_cache(args, cachename_base, url_type):
     With time-based caching, cache files older than 24 hours are automatically ignored.
     """
     try:
-        verbose(args, f"looking for {cachename_base}")
+        verbose(args, f"looking for cachename_base: {cachename_base}")
 
         cachename, st = cache_stat(cachename_base)
         if not args.offline and args.use_time_based_cache:
@@ -918,7 +925,7 @@ def get_cache(args, cachename_base, url_type):
 
         cache_standings_date = get_standings_date(text)
         if not args.use_web_standings_dates or args.offline:
-            verbose(args, "not use_web_standings_dates or offline")
+            verbose(args, "offline or (not use_web_standings_dates)")
             if url_type not in STANDINGS_DATE:
                 STANDINGS_DATE[url_type] = cache_standings_date
             return (text.splitlines(), False)
@@ -1534,6 +1541,7 @@ def print_districts(args, need_nl):
             def district_allcodes_provider(district_name=district):
                 allcodes = []
                 for state in DISTRICTS[district_name]:
+                    state = state.upper()
                     country = get_country(state)
                     allcodes += get_codes(args, f"{STATEBASE}?country={country}&state={state}", STANDINGS_STATES)
                 return allcodes
@@ -1552,6 +1560,7 @@ def print_districts(args, need_nl):
             data = {"title": title, "date": None, "district": district, "all_info": []}
 
             for state in DISTRICTS[district]:
+                state = state.upper()
                 country = get_country(state)
                 codes = select_codes(
                     args,
@@ -1651,7 +1660,7 @@ def print_top(args):
     if args.district:
         for district in args.district:
             for state in DISTRICTS[district]:
-                states.append(state)
+                states.append(state.upper())
     if args.state:
         for state in args.state:
             states.append(state)
@@ -2131,7 +2140,7 @@ class BooleanAction(argparse.Action):
         setattr(namespace, self.dest, not option_string.startswith("--no"))
 
 
-def parse_options(conf):
+def parse_options(averbose, conf):
     """Set up all of the option parsing"""
     conf = {} if conf is None else conf
 
@@ -2354,7 +2363,7 @@ def parse_options(conf):
     ################
     # cache control options
     ################
-    add_cache_control_options(parser, conf)
+    add_cache_control_options(parser, averbose, conf)
 
     ################
     # other options
@@ -2397,7 +2406,7 @@ def parse_options(conf):
     return (parser, args)
 
 
-def get_configuration():
+def get_configuration(averbose):
     """
     Look for a configuration file and mix its values in
     with the command line.
@@ -2405,8 +2414,6 @@ def get_configuration():
         dirname($0)/.atastandings.yaml
         ~/.atastandings.yaml
     """
-
-    averbose = sum(key in ("-v", "--verbose") for key in sys.argv)
 
     yaml_name = "/.atastandings.ini"
     conf_args = {}
@@ -2416,7 +2423,7 @@ def get_configuration():
         os.getenv("HOMEPATH", "/does-not-exist/") + yaml_name,
     ]:
         if averbose:
-            print(f"looking for {conf}", file=sys.stderr, flush=True)
+            print(f"looking for config: {conf}", file=sys.stderr, flush=True)
 
         try:
             with open(conf) as fp:
@@ -2516,16 +2523,21 @@ def update_cache(args):
 
 def expand_comma_lists(lst):
     """
-    Given a list where some elements look like AB and others like CD,EF,...,
-    create a new list AB,CD,EF,...
+    Given a list where some elements look like AB and others like EF,CD,...,
+    create a new list AB,EF,CD,...
+    Remove all duplicates and maintain the order.
     """
     if lst is None:
         return []
-    ret = set()
+    check = set()
+    ret = []
     for l in lst:
         for nl in l.split(","):
-            ret.add(nl.strip())
-    return sorted(ret)
+            nls = nl.strip()
+            if nls not in check:
+                ret.append(nls)
+                check.add(nls)
+    return ret
 
 
 def check_numeric_option(parser, val, name, min_value=1):
@@ -2579,6 +2591,7 @@ def check_options(parser, args):
 
     if args.internal_checks:
         print("Internal checks complete")
+        print(f"cache_directory={args.cache_directory}")
         sys.exit()
 
     if args.update_cache:
@@ -2621,12 +2634,14 @@ def check_options(parser, args):
     # Check the values of the --state/--province, --all-us, --all-canada options.
     # Argparse already makes these options exclusive.
     # The web site allows for both lower and upper case for states. Upper case displays better.
+    if not args.state:
+        args.state = []
     upper_case(args.state)
-    args.state = expand_comma_lists(args.state)
     if args.all_us:
         args.state += US_STATES
     if args.all_canada:
         args.state += CA_PROVINCES
+    args.state = expand_comma_lists(args.state)
     check_option(args.state, "-S/--state", US_STATES + CA_PROVINCES)
 
     # Check the values of the ranks
@@ -2662,9 +2677,10 @@ def check_options(parser, args):
 
 def main():
     """main function"""
-    conf = get_configuration()
+    averbose = sum(key in ("-verbose", "--v", "-vv", "-vvv") for key in sys.argv)
+    conf = get_configuration(averbose)
     add_environment(conf)
-    parser, args = parse_options(conf)
+    parser, args = parse_options(averbose, conf)
 
     check_options(parser, args)
 
